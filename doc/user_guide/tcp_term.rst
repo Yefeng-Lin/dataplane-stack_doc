@@ -18,6 +18,37 @@ iperf3 is a tool for active measurements of the maximum achievable bandwidth on 
 This guide explains in detail on how to run iperf3 on top of VPP's host stack
 for tcp termination case on Device Under Test (DUT).
 
+
+*****
+Setup
+*****
+
+kernel stack vs vpp hoststack::
+
+                                 |
+                                 |  +---------------------+
+                  +---------+    |  |       +-----------+ |
+                  | iperf3  |    |  |       |LD_PRELOAD | |
+       user       +---------+    |  |iperf3 +-----------+ |
+       space                     |  +---------------------+
+    +-------------------------|  |
+       kernel   +-------------+  |  +-------------+
+       space    | +---------+ |  |  | +---------+ |
+                | |  SOCKET | |  |  | | SESSION | |
+                | +---------+ |  |  | +---------+ |
+                | +---------+ |  |  | +---------+ |
+                | |    TCP  | |  |  | |   TCP   | |
+                | +---------+ |  |  | +---------+ |
+                | +---------+ |  |  | +---------+ |
+                | |    IP   | |  |  | |   IP    | |
+                | +---------+ |  |  | +---------+ |
+                | +---------+ |  |  | +---------+ |
+                | |    L2   | |  |  | |   L2    | |  user space
+                | +---------+ |  |  | +---------+ |
+                |KERNEL STACK |  |  |VPP          |
+                +-------------+  |  +-------------+
+                                 |
+
 **********
 LoopBack
 **********
@@ -174,6 +205,21 @@ Kill vpp::
 Kill iperf3 server::
 
         $ sudo pkill -9 iperf3
+
+********************
+Tips for performance
+********************
+
+For jumbo packets, increase vpp tcp mtu and buffer size to improve the performance. 
+Below is vpp example config::
+
+        tcp {
+            cc-algo cubic 
+            mtu 9000
+        }
+        buffers {
+            default data-size 10000
+        }
 
 *********
 Resources

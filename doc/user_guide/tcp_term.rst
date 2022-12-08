@@ -16,7 +16,7 @@ session and application layer protocols that leverages VPP's existing protocol s
 iperf3 is a tool for active measurements of the maximum achievable bandwidth on IP networks.
 
 This guide explains in detail on how to run iperf3 on top of VPP's host stack
-for tcp termination case on a standalone Device Under Test (DUT).
+for tcp termination case on Device Under Test (DUT).
 
 **********
 LoopBack

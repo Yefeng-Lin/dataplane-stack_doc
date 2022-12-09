@@ -19,35 +19,14 @@ This guide explains in detail on how to run iperf3 on top of VPP's host stack
 for tcp termination case on Device Under Test (DUT).
 
 
-*****
-Setup
-*****
+********************
+Network Stack Layers
+********************
 
-kernel stack vs vpp hoststack::
+.. figure:: ../images/kernel-vpp-stack.png
+   :align: center
 
-                                 |
-                                 |  +---------------------+
-                  +---------+    |  |       +-----------+ |
-                  | iperf3  |    |  |       |LD_PRELOAD | |
-       user       +---------+    |  |iperf3 +-----------+ |
-       space                     |  +---------------------+
-    +-------------------------|  |
-       kernel   +-------------+  |  +-------------+
-       space    | +---------+ |  |  | +---------+ |
-                | |  SOCKET | |  |  | | SESSION | |
-                | +---------+ |  |  | +---------+ |
-                | +---------+ |  |  | +---------+ |
-                | |    TCP  | |  |  | |   TCP   | |
-                | +---------+ |  |  | +---------+ |
-                | +---------+ |  |  | +---------+ |
-                | |    IP   | |  |  | |   IP    | |
-                | +---------+ |  |  | +---------+ |
-                | +---------+ |  |  | +---------+ |
-                | |    L2   | |  |  | |   L2    | |  user space
-                | +---------+ |  |  | +---------+ |
-                |KERNEL STACK |  |  |VPP          |
-                +-------------+  |  +-------------+
-                                 |
+   Linux kernel stack VS VPP hoststack
 
 **********
 LoopBack

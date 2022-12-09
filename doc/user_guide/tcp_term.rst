@@ -33,7 +33,7 @@ Network Stack Layers
 
    Linux kernel stack VS VPP hoststack
 
-**********
+********
 LoopBack
 ********
 

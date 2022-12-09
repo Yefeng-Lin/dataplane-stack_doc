@@ -24,6 +24,9 @@ LoopBack
 
 This setup just needs one DUT.
 
+VPP Stack
+^^^^^^^^^
+
 Setup
 ~~~~~
 
@@ -164,15 +167,22 @@ For more detailed iperf3 usage, refer to following link,
 
 - `iperf3 usage reference`_
 
-The above contents example of how to run iperf3 on top of VPP's host stack. Additionally, can run iperf3 over kernel stack::
+Kernel Stack
+^^^^^^^^^^^^
+
+Run over Kernel stack is simpler than VPP stack. 
+First, start iperf3 serevr::
 
         $ iperf3 -4 -s -D
+
+And then, start iperf3 client connect to server::
+
         $ iperf3 -c 127.0.0.1
 
-And then compare TCP throughput between VPP and kernel.
+The measurement results will be printed like above format. Further compare the throughput performance between ithe two cases.
 
 Stop
-~~~~
+^^^^
 
 Kill vpp::
 
@@ -186,21 +196,19 @@ Kill iperf3 server::
 Physical NIC
 ************
 
+This guide assmues the following setup:
+        
+.. figure:: ../images/tcp_term_nic.png
+        :align: center
+
+As shown, the Device Under Test (DUT) should have at least one NIC connected to the client machine.
+The DUT run iperf3 server and the client machine run iperf3 client.
+
+VPP Stack
+^^^^^^^^^
+
 Setup
 ~~~~~
-
-This guide assmues the following setup::
-        
-        +------------------+                              +-------------------+
-        |                  |                              |                   |
-        |  Traffic         |                         +----|       DUT         |
-        |  Generator       | Ethernet Connection(s)  | N  |                   |
-        |                  |<----------------------->| I  |                   |
-        |                  |                         | C  |                   |
-        |                  |                         +----|                   |
-        +------------------+                              +-------------------+
-
-As shown, the Device Under Test (DUT) should have at least one NIC connected to the traffic generator. The user can use any traffic generator.
 
 Start vpp as a daemon with config parameters and define variable to hold the vpp cli listen socket::
 
@@ -268,13 +276,30 @@ If both iperf3 client and server run successfully, the measurement results will 
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
-If want to run iperf3 over kernel stack, can start iperf3 server on DUT::
+Kernel Stack
+^^^^^^^^^^^^
+
+If want to run iperf3 over kernel stack, start iperf3 server on DUT::
 
         $ iperf3 -4 -s D
 
 And start iperf3 client on CLIENT::
 
         $ iperf3 -c ${DUT_ip_address}
+
+.. note::
+        ``DUT_ip_address:`` DUT's ip address.
+
+Stop
+^^^^
+
+Kill vpp::
+
+        $ sudo pkill -9 vpp
+
+Kill iperf3 server::
+
+        $ sudo pkill -9 iperf3
 
 *********
 Resources

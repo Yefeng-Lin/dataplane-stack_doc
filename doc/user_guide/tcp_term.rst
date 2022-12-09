@@ -12,11 +12,16 @@ Introduction
 ************
 
 VPP's host stack is a user space implementation of several transport,
-session and application layer protocols that leverages VPP's existing protocol stack.
+session and application layer protocols. It leverages VPP’s graph based
+forwarding model and vectorized packet processing to ensure high throughput
+and scale transport protocol termination.
+
 iperf3 is a tool for active measurements of the maximum achievable bandwidth on IP networks.
 
-This guide explains in detail on how to run iperf3 on top of VPP's host stack
-for tcp termination case on Device Under Test (DUT).
+This guide explains in detail on how to integrate iperf3 with VPP's host stack
+for tcp termination cases. The integration is done via LD_PRELOAD which
+intercepts syscalls that are supposed to go into the kernel and reinjects
+them into VPP.
 
 
 ********************

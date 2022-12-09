@@ -18,9 +18,9 @@ iperf3 is a tool for active measurements of the maximum achievable bandwidth on 
 This guide explains in detail on how to run iperf3 on top of VPP's host stack
 for tcp termination case on Device Under Test (DUT).
 
-**********
+********
 LoopBack
-**********
+********
 
 This setup just needs one DUT.
 
@@ -95,7 +95,7 @@ Create a VCL configuration file ``vcl_iperf3_client.conf`` for iperf3 client ins
 The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
 Additionally, it provides the path to session layer's different app namespace socket for iperf3 client and server instances.
 
-User can also choose to run script ``run_dut.sh -l`` to setup test environment.
+User can also choose to run script ``run_dut.sh -l`` to setup test environment::
 
         $ cd /path/to/dataplane-stack
         $ ./usecase/tcp_term/run_dut.sh -l
@@ -164,6 +164,13 @@ For more detailed iperf3 usage, refer to following link,
 
 - `iperf3 usage reference`_
 
+The above contents example of how to run iperf3 on top of VPP's host stack. Additionally, can run iperf3 over kernel stack::
+
+        $ iperf3 -4 -s -D
+        $ iperf3 -c 127.0.0.1
+
+And then compare TCP throughput between VPP and kernel.
+
 Stop
 ~~~~
 
@@ -174,6 +181,100 @@ Kill vpp::
 Kill iperf3 server::
 
         $ sudo pkill -9 iperf3
+
+************
+Physical NIC
+************
+
+Setup
+~~~~~
+
+This guide assmues the following setup::
+        
+        +------------------+                              +-------------------+
+        |                  |                              |                   |
+        |  Traffic         |                         +----|       DUT         |
+        |  Generator       | Ethernet Connection(s)  | N  |                   |
+        |                  |<----------------------->| I  |                   |
+        |                  |                         | C  |                   |
+        |                  |                         +----|                   |
+        +------------------+                              +-------------------+
+
+As shown, the Device Under Test (DUT) should have at least one NIC connected to the traffic generator. The user can use any traffic generator.
+
+Start vpp as a daemon with config parameters and define variable to hold the vpp cli listen socket::
+
+        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        $ export sockfile=/run/vpp/cli.sock
+
+Get interface name from lshw command::
+
+        $ sudo lshw -c net -businfo
+        Bus info          Device      Class      Description
+        ====================================================
+        pci@0000:07:00.0  eth0        network    RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
+        pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
+        pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
+
+Select appropriate interface to create rdma interface and set ip address::
+
+        sudo $(which vppctl) -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
+        sudo $(which vppctl) -s ${sockfile} set interface ip address eth0 1.1.1.2/30
+        sudo $(which vppctl) -s ${sockfile} set interface state eth0 up
+
+Create a VCL configuration file ``vcl_iperf3_server.conf`` for iperf3 server instance::
+        
+        vcl {
+             rx-fifo-size 4000000
+             tx-fifo-size 4000000
+             app-scope-global
+             app-socket-api /var/run/vpp/app_ns_sockets/default
+           }
+
+The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
+
+Test
+~~~~
+
+Define following variable with the appropriate path::
+
+        $ export LDP_PATH=/path/to/libvcl_ldpreload.so
+
+On DUT start the iperf3 server as a daemon over VPP host stack::
+
+        $ sudo taskset -c <core-list> sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
+
+On CLIENT start the iperf3 client to connect to iperf3 server::
+
+        $ sudo taskset -c <core-list> iperf3 -c 1.1.1.2
+
+If both iperf3 client and server run successfully, the measurement results will be printed::
+
+        Connecting to host 172.16.1.1, port 5201
+        [ 33] local 172.16.2.1 port 43757 connected to 172.16.1.1 port 5201
+        [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+        [ 33]   0.00-1.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
+        [ 33]   1.00-2.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
+        [ 33]   2.00-3.00   sec  2.23 GBytes  19.1 Gbits/sec  65535    555 MBytes
+        [ 33]   3.00-4.00   sec  2.23 GBytes  19.2 Gbits/sec    0    555 MBytes
+        [ 33]   4.00-5.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
+        [ 33]   5.00-6.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
+        [ 33]   6.00-7.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
+        [ 33]   7.00-8.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
+        [ 33]   8.00-9.00   sec  2.23 GBytes  19.2 Gbits/sec    0    555 MBytes
+        [ 33]   9.00-10.00  sec  2.23 GBytes  19.2 Gbits/sec    0   -1874590816.00 Bytes
+        - - - - - - - - - - - - - - - - - - - - - - - - -
+        [ ID] Interval           Transfer     Bitrate         Retr
+        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
+        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
+
+If want to run iperf3 over kernel stack, can start iperf3 server on DUT::
+
+        $ iperf3 -4 -s D
+
+And start iperf3 client on CLIENT::
+
+        $ iperf3 -c ${DUT_ip_address}
 
 *********
 Resources

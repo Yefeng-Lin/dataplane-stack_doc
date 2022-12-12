@@ -30,14 +30,20 @@ Network Stack Layers
 .. figure:: ../images/kernel-vpp-stack.png
    :align: center
 
-   Linux kernel stack VS VPP hoststack. Typically, if on the same DUT configure iperf3 using loopback interface,
-   and using physical NIC between different machines.
+   Linux kernel stack VS VPP hoststack.
+
+This guide demonstrates two kinds of iperf3 connection:
+
+- Loopback connection on one DUT
+- Ethernet connection between DUT and client
 
 ********
 LoopBack
 ********
 
-This setup just needs one DUT.
+.. figure:: ../images/iperf3-loopback.png
+   :align: center
+   :width: 300
 
 Setup
 ~~~~~
@@ -207,7 +213,7 @@ Physical NIC
 
 This guide assmues the following setup:
         
-.. figure:: ../images/tcp_term_nic.png
+.. figure:: ../images/tcp-term-nic.png
         :align: center
         :width: 400
 

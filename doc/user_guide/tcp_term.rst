@@ -31,7 +31,8 @@ Network Stack Layers
 .. figure:: ../images/kernel-vpp-stack.png
    :align: center
 
-   Linux kernel stack VS VPP hoststack
+   Linux kernel stack VS VPP hoststack. Typically, if on the same DUT configure iperf3 using loopback interface,
+   and using physical NIC between different machines.
 
 ********
 LoopBack
@@ -215,9 +216,10 @@ This guide assmues the following setup:
         
 .. figure:: ../images/tcp_term_nic.png
         :align: center
+        :width: 400
 
 As shown, the Device Under Test (DUT) should have at least one NIC connected to the client machine.
-The DUT run iperf3 server and the client machine run iperf3 client.
+The DUT run iperf3 in server mode and the client machine run iperf3 in client mode.
 
 VPP Stack
 ^^^^^^^^^
@@ -267,7 +269,7 @@ On DUT start the iperf3 server as a daemon over VPP host stack::
 
         $ sudo taskset -c <core-list> sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
 
-On CLIENT start the iperf3 client to connect to iperf3 server::
+On client machine start the iperf3 client to connect to iperf3 server::
 
         $ sudo taskset -c <core-list> iperf3 -c 1.1.1.2
 
@@ -298,7 +300,7 @@ If want to run iperf3 over kernel stack, start iperf3 server on DUT::
 
         $ iperf3 -4 -s D
 
-And start iperf3 client on CLIENT::
+And start iperf3 client on client machine::
 
         $ iperf3 -c ${DUT_ip_address}
 

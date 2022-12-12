@@ -179,9 +179,6 @@ For more detailed iperf3 usage, refer to following link,
 
 - `iperf3 usage reference`_
 
-Kernel Stack
-^^^^^^^^^^^^
-
 Run over Kernel stack is simpler than VPP stack. 
 First, start iperf3 serevr::
 
@@ -194,7 +191,7 @@ And then, start iperf3 client connect to server::
 The measurement results will be printed like above format. Further compare the throughput performance between ithe two cases.
 
 Stop
-^^^^
+~~~~
 
 Kill vpp::
 
@@ -216,9 +213,6 @@ This guide assmues the following setup:
 
 As shown, the Device Under Test (DUT) should have at least one NIC connected to the client machine.
 The DUT run iperf3 in server mode and the client machine run iperf3 in client mode.
-
-VPP Stack
-^^^^^^^^^
 
 Setup
 ~~~~~
@@ -289,9 +283,6 @@ If both iperf3 client and server run successfully, the measurement results will 
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
-Kernel Stack
-^^^^^^^^^^^^
-
 If want to run iperf3 over kernel stack, start iperf3 server on DUT::
 
         $ iperf3 -4 -s D
@@ -304,7 +295,7 @@ And start iperf3 client on client machine::
         ``DUT_ip_address:`` DUT's ip address.
 
 Stop
-^^^^
+~~~~
 
 Kill vpp::
 

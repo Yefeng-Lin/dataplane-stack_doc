@@ -23,7 +23,6 @@ for tcp termination cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP.
 
-
 ********************
 Network Stack Layers
 ********************
@@ -39,9 +38,6 @@ LoopBack
 ********
 
 This setup just needs one DUT.
-
-VPP Stack
-^^^^^^^^^
 
 Setup
 ~~~~~
@@ -89,6 +85,18 @@ For more detailed usage on above commands, refer to following links,
 - `VPP set interface state reference`_
 - `VPP ip route reference`_
 
+Alternatively, for DUT with dataplane repo, user can choose to run script ``run_dut.sh -l`` to setup vpp::
+
+        $ cd /path/to/dataplane-stack
+        $ ./usecase/tcp_term/run_dut.sh -l
+
+.. note::
+
+        Run "./usecase/tcp_term/run_dut.sh --help" for all supported options.
+
+Test
+~~~~
+
 Create a VCL configuration file ``vcl_iperf3_server.conf`` for iperf3 server instance::
 
         vcl {
@@ -113,18 +121,6 @@ Create a VCL configuration file ``vcl_iperf3_client.conf`` for iperf3 client ins
 
 The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
 Additionally, it provides the path to session layer's different app namespace socket for iperf3 client and server instances.
-
-User can also choose to run script ``run_dut.sh -l`` to setup test environment::
-
-        $ cd /path/to/dataplane-stack
-        $ ./usecase/tcp_term/run_dut.sh -l
-
-.. note::
-
-        Run "./usecase/tcp_term/run_dut.sh --help" for all supported options.
-
-Test
-~~~~
 
 Define following variable with the appropriate path::
 
@@ -153,7 +149,7 @@ To start the iperf3 client over VPP host stack to connect to iperf3 server::
 
 Make sure that the core-list is such selected that it does not overlap vpp's cores but it maintains the same numa.
 
-The same user can alse choose to run scripts to start the iperf3 server and client::
+Alternatively, for DUT with dataplane stack repo, user can choose to run scripts to start the iperf3 server and client::
 
         $ cd /path/to/dataplane-stack
         $ ./usecase/tcp_term/run_iperf3_server.sh -l

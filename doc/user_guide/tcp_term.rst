@@ -194,7 +194,7 @@ And then, start iperf3 client connect to server::
 
         $ iperf3 -c 127.0.0.1
 
-The measurement results will be printed like above format. Further compare the throughput performance between ithe two cases.
+The measurement results will be printed like above format. Further compare the throughput performance between the two stack.
 
 Stop
 ~~~~

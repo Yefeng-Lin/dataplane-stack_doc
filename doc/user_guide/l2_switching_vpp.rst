@@ -36,27 +36,54 @@ to the traffic generator. The user can use any traffic generator. The connection
 can be logical memif connection to soft traffic generator located on same host
 or physical ethernet connection to external traffic generator.
 
-***
-Run
-***
+****************
+Memif connection
+****************
 
-For ethernet connections to extern traffic generator, run `run_dut.sh -p`
-to create ethernet interfaces in vpp and associate interfaces with a bridge domain::
+Setup
+~~~~~
 
-        $ ./usecase/l2_switching/run_dut.sh -p enp1s0f0np0 enp1s0f0np1
+Start vpp as a daemon with config parameters::
+
+        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
 
 .. note::
-        Use interface names on DUT to replace sample names here.
+        For DUT with dataplane stack repo, vpp binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vpp.
 
-OR
+        For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vpp path by "which vpp".
 
-For memif connections to soft traffic generator located on same host, run `run_dut.sh -l`
-to create memif interfaces and associate interfaces with a bridge domain::
+Define variable to hold the vpp cli listen socket specified in above step::
 
+        $ export sockfile=/run/vpp/cli.sock
+
+For memif connections to soft traffic generator located on same host, add following
+VPP commands to create memif interfaces and associate interfaces with a bridge domain::
+
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-dut-1
+        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif_dut-2
+        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
+        sudo /path/to/vppctl -s ${sockfile} set interface mac address memif1/1 02:fe:a4:26:ca:f2
+        sudo /path/to/vppctl -s ${sockfile} set interface mac address memif2/1 02:fe:51:75:42:42
+        sudo /path/to/vppctl -s ${sockfile} set int state memif1/1 up
+        sudo /path/to/vppctl -s ${sockfile} set int state memif2/1 up
+        sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge memif1/1 10
+        sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge memif2/1 10
+        sudo /path/to/vppctl -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 memif2/1 static
+
+.. note::
+        For DUT with dataplane stack repo, vppctl binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vppctl.
+
+        For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vppctl path by "which vppctl".
+
+Alternatively, for DUT with dataplane repo, user can choose to run script `run_dut.sh -l` to setup vpp::
+        
+        $ cd /path/to/dataplane-stack
         $ ./usecase/l2_switching/run_dut.sh -l
 
 .. note::
-        Run "./usecase/l2_switching/run_dut.sh –h" for all supported options.
+
+        Run "./usecase/tcp_term/run_dut.sh --help" for all supported options.
 
 For more detailed usage of vpp commands in the `run_dut.sh`, refer to following links,
 
@@ -70,10 +97,44 @@ To explore more on VPP's accepted commands, please review `VPP cli reference`_.
 Test
 ~~~~
 
-Configure your traffic generator to send packets with a destination MAC address
-of ``00:00:0a:81:00:02``, then ``vpp`` will forward those packets out on output interface.
+Start vpp as a daemon with config parameters::
 
-For memif connections example, run the script `run_pg.sh` to create a soft traffic generator
+        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
+
+Define variable to hold the vpp cli listen socket specified in above step::
+
+        $ export sockfile=/run/vpp/cli.sock
+
+Create a soft traffic generator and send packets with a destination MAC address
+of ``00:00:0a:81:00:02``::
+
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-DUT1_CNF1-1
+        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif_DUT1_CNF1-2
+        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
+        sudo /path/to/vppctl -s ${sockfile} set interface mac address memif1/1 02:fe:a4:26:ca:ac
+        sudo /path/to/vppctl -s ${sockfile} set interface mac address memif2/1 02:fe:51:75:42:ed
+        sudo /path/to/vppctl -s ${sockfile} set int state memif1/1 up
+        sudo /path/to/vppctl -s ${sockfile} set int state memif2/1 up
+        sudo /path/to/vppctl -s ${sockfile} set int ip address memif1/1 10.81.255.1/16
+        sudo /path/to/vppctl -s ${sockfile} set int ip address memif2/1 10.82.255.1/16
+        sudo /path/to/vppctl -s ${sockfile} packet-generator new {      \
+                                                name pg0                  \
+                                                limit -1                  \
+                                                size 64-64                \
+                                                node memif1/1-output      \
+                                                tx-interface memif1/1     \
+                                                data {                    \
+                                                IP4: 00:00:0A:81:0:1 - 00:00:0A:81:0:2 -> 02:fe:a4:26:ca:f2   \
+                                                UDP: 192.81.0.1 - 192.81.0.2 -> 192.82.0.1 - 192.82.0.2       \
+                                                UDP: 1234 -> 2345     \
+                                                incrementing 8        \
+                                                }                         \
+                                            }
+
+Then ``vpp`` will forward those packets out on output interface.
+
+Alternatively, for DUT with dataplane repo, user can choose to run the script `run_pg.sh` to create a soft traffic generator
 and send packets to vpp switch::
 
         $ ./usecase/l2_switching/run_pg.sh
@@ -89,6 +150,78 @@ Here is a sample output for memif interfaces::
                                                                rx bytes       2253160448
         memif2/1         2      up          9000/0/0/0         tx packets       35205632
                                                                tx bytes       2253160448
+
+Stop
+~~~~
+
+Kill vpp::
+
+        $ sudo pkill -9 vpp
+
+****************************
+physical ethernet connection
+****************************
+
+Setup
+~~~~~
+
+Start vpp as a daemon with config parameters::
+
+        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
+
+.. note::
+        For DUT with dataplane stack repo, vpp binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vpp.
+
+        For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vpp path by "which vpp".
+
+Define variable to hold the vpp cli listen socket specified in above step::
+
+        $ export sockfile=/run/vpp/cli.sock
+
+For ethernet connections to extern traffic generator, add following VPP commands
+to create ethernet interfaces and associate interfaces with a bridge domain::
+
+        sudo /path/to/vppctl -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
+        sudo /path/to/vppctl -s ${sockfile} set interface state eth0 up
+        sudo /path/to/vppctl -s ${sockfile} create interface rdma host-if enP1p1s0f1 name eth1
+        sudo /path/to/vppctl -s ${sockfile} set interface state eth1 up
+        sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge eth0 10
+        sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge eth1 10
+        sudo /path/to/vppctl -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 eth1 static
+
+For ethernet connections to extern traffic generator, run `run_dut.sh -p`
+to create ethernet interfaces in vpp and associate interfaces with a bridge domain::
+
+        $ ./usecase/l2_switching/run_dut.sh -p enp1s0f0np0 enp1s0f0np1
+
+.. note::
+        Use interface names on DUT to replace sample names here.
+
+Test
+~~~~
+
+To display the MAC address entries of the L2 FIB table, use the command ``show l2fib all``.
+Here is a sample output for added MAC address entry of ethernet connection::
+
+        $ sudo /path/to/vppctl -s ${sockfile} show l2fib all
+            Mac-Address     BD-Idx If-Idx BSN-ISN Age(min) static filter bvi         Interface-Name
+         00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
+        L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
+
+Configure your traffic generator to send packets with a destination MAC address
+of ``00:00:0a:81:00:02``, then ``vpp`` will forward those packets out on eth1.
+
+Use the command ``show interface`` to display interface tx/rx counters.
+Here is a sample output for ethernet interfaces::
+
+        $ sudo /path/to/vppctl -s ${sockfile} show interface
+
+          Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+         local0               0     down          0/0/0/0
+         eth0                 1      up          9000/0/0/0     rx packets              25261056
+                                                                rx bytes             37891584000
+         eth1                 2      up          9000/0/0/0     tx packets              25261056
+                                                                tx bytes             37891584000
 
 Stop
 ~~~~

@@ -16,7 +16,7 @@ address. It forwards packets based on the l2fib table.
 
 This guide explains in detail on how to use the VPP based L2 switching use case.
 
-The l2fib table starts out empty, and there are two kinds to build l2fib table::
+The l2fib table starts out empty, and there are two ways to create l2fib table:
 
 - Learning
 - Flooding
@@ -24,26 +24,26 @@ The l2fib table starts out empty, and there are two kinds to build l2fib table::
 Learning
 ~~~~~~~~
 
-Every time vpp receives anything, it takes a look at the Source MAC address field of the incoming frame. 
-It uses the Source MAC and the interface the frame was received on to build an entry in the MAC Address Table.
+Every time VPP receives anything, it takes a look at the Source MAC address field of the incoming frame. 
+It uses the Source MAC and the interface the frame was received on to build an entry in the l2fib table.
 
-Sooner or later, as each connected device inevitably sends something, the vpp will have a fully populated l2fib table.
+Sooner or later, as each connected device inevitably sends something, the VPP will have a fully populated l2fib table.
 This table can then be used to smartly forward frames to their intended destination.
 
 Flooding
 ~~~~~~~~
 
-However, despite the learning process above, it is unavoidable that a Switch will at some point receive a frame
-destined to a MAC address of which the Switch does not know the location.
+However, despite the learning process above, it is unavoidable that VPP will at some point receive a frame
+destined to a MAC address of which the l2fib table don't contain.
 
-In such cases, the vpp’s only option is to simply duplicate the frame and send it out all interfaces. This action is known as Flooding.
+In such cases, the VPP will duplicate the frame and send it out all interfaces. This action is known as Flooding.
 
-Flooding assures that if the intended device exists and if it is connected to the vpp, it will definitely receive the frame.
+Flooding assures that if the intended device exists and if it is connected to the VPP, it will definitely receive the frame.
 
 All connected device will receive the frame and take a look at the Destination MAC address field.
 If they are not the intended recipient, they will simply silently drop the frame.
 
-When the intended device receives the frame, a response will be generated, which when sent to the vpp will allow the vpp to learn and create a l2fib table entry.
+When the intended device receives the frame, a response will be generated, which when sent to the VPP will allow the VPP to learn and build an entry in l2fib table.
 
 **********
 Test Setup
@@ -72,7 +72,7 @@ Memif connection
 Setup
 ~~~~~
 
-Start vpp as a daemon with config parameters::
+Start VPP as a daemon with config parameters::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-dut.sock} cpu {main-core 0 corelist-workers 1}
 
@@ -81,7 +81,7 @@ Start vpp as a daemon with config parameters::
 
         For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vpp path by "which vpp".
 
-Define variable to hold the vpp cli listen socket specified in above step::
+Define variable to hold the VPP cli listen socket specified in above step::
 
         $ export sockfile=/run/vpp/cli-dut.sock
 
@@ -114,7 +114,7 @@ Alternatively, for DUT with dataplane repo, user can choose to run script `run_d
 
         Run "./usecase/l2_switching/run_dut.sh --help" for all supported options.
 
-For more detailed usage of vpp commands in the `run_dut.sh`, refer to following links,
+For more detailed usage of VPP commands in the `run_dut.sh`, refer to following links,
 
 - `VPP rdma cli reference`_
 - `VPP memif interface reference`_
@@ -126,11 +126,11 @@ To explore more on VPP's accepted commands, please review `VPP cli reference`_.
 Test
 ~~~~
 
-Start another vpp instance as a daemon with config parameters::
+Start another VPP instance as a daemon with config parameters::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-tg.sock} cpu {main-core 2 corelist-workers 3}
 
-Define variable to hold the vpp cli listen socket specified in above step::
+Define variable to hold the VPP cli listen socket specified in above step::
 
         $ export sockfile=/run/vpp/cli-tg.sock
 
@@ -167,7 +167,7 @@ Start to send the traffic to DUT::
 Then ``vpp`` will forward those packets out on output interface.
 
 Alternatively, for DUT with dataplane repo, user can choose to run the script `run_pg.sh` to create a soft traffic generator
-and send packets to vpp switch::
+and send packets to VPP switch::
 
         $ ./usecase/l2_switching/run_pg.sh
 
@@ -186,7 +186,7 @@ Here is a sample output for memif interfaces::
 Stop
 ~~~~
 
-Kill vpp::
+Kill VPP::
 
         $ sudo pkill -9 vpp
 
@@ -197,7 +197,7 @@ physical ethernet connection
 Setup
 ~~~~~
 
-Start vpp as a daemon with config parameters::
+Start VPP as a daemon with config parameters::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
 
@@ -206,7 +206,7 @@ Start vpp as a daemon with config parameters::
 
         For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vpp path by "which vpp".
 
-Define variable to hold the vpp cli listen socket specified in above step::
+Define variable to hold the VPP cli listen socket specified in above step::
 
         $ export sockfile=/run/vpp/cli.sock
 
@@ -222,7 +222,7 @@ to create ethernet interfaces and associate interfaces with a bridge domain::
         sudo /path/to/vppctl -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 eth1 static
 
 For ethernet connections to extern traffic generator, run `run_dut.sh -p`
-to create ethernet interfaces in vpp and associate interfaces with a bridge domain::
+to create ethernet interfaces in VPP and associate interfaces with a bridge domain::
 
         $ ./usecase/l2_switching/run_dut.sh -p enp1s0f0np0 enp1s0f0np1
 
@@ -241,7 +241,7 @@ Here is a sample output for added MAC address entry of ethernet connection::
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
 
 Configure your traffic generator to send packets with a destination MAC address
-of ``00:00:0a:81:00:02``, then ``vpp`` will forward those packets out on eth1.
+of ``00:00:0a:81:00:02``, then ``VPP`` will forward those packets out on eth1.
 
 Use the command ``show interface`` to display interface tx/rx counters.
 Here is a sample output for ethernet interfaces::
@@ -258,7 +258,7 @@ Here is a sample output for ethernet interfaces::
 Stop
 ~~~~
 
-Kill vpp::
+Kill VPP::
 
         $ sudo pkill -9 vpp
 

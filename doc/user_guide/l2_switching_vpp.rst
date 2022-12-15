@@ -16,6 +16,35 @@ address. It forwards packets based on the l2fib table.
 
 This guide explains in detail on how to use the VPP based L2 switching use case.
 
+The l2fib table starts out empty, and there are two kinds to build l2fib table::
+
+- Learning
+- Flooding
+
+Learning
+~~~~~~~~
+
+Every time vpp receives anything, it takes a look at the Source MAC address field of the incoming frame. 
+It uses the Source MAC and the interface the frame was received on to build an entry in the MAC Address Table.
+
+Sooner or later, as each connected device inevitably sends something, the vpp will have a fully populated l2fib table.
+This table can then be used to smartly forward frames to their intended destination.
+
+Flooding
+~~~~~~~~
+
+However, despite the learning process above, it is unavoidable that a Switch will at some point receive a frame
+destined to a MAC address of which the Switch does not know the location.
+
+In such cases, the vpp’s only option is to simply duplicate the frame and send it out all interfaces. This action is known as Flooding.
+
+Flooding assures that if the intended device exists and if it is connected to the vpp, it will definitely receive the frame.
+
+All connected device will receive the frame and take a look at the Destination MAC address field.
+If they are not the intended recipient, they will simply silently drop the frame.
+
+When the intended device receives the frame, a response will be generated, which when sent to the vpp will allow the vpp to learn and create a l2fib table entry.
+
 **********
 Test Setup
 **********

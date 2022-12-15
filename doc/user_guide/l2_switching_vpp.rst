@@ -45,7 +45,7 @@ Setup
 
 Start vpp as a daemon with config parameters::
 
-        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
+        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-dut.sock} cpu {main-core 0 corelist-workers 1}
 
 .. note::
         For DUT with dataplane stack repo, vpp binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vpp.
@@ -54,14 +54,14 @@ Start vpp as a daemon with config parameters::
 
 Define variable to hold the vpp cli listen socket specified in above step::
 
-        $ export sockfile=/run/vpp/cli.sock
+        $ export sockfile=/run/vpp/cli-dut.sock
 
 For memif connections to soft traffic generator located on same host, add following
 VPP commands to create memif interfaces and associate interfaces with a bridge domain::
 
         sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-dut-1
         sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
-        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif_dut-2
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif-dut-2
         sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
         sudo /path/to/vppctl -s ${sockfile} set interface mac address memif1/1 02:fe:a4:26:ca:f2
         sudo /path/to/vppctl -s ${sockfile} set interface mac address memif2/1 02:fe:51:75:42:42
@@ -83,7 +83,7 @@ Alternatively, for DUT with dataplane repo, user can choose to run script `run_d
 
 .. note::
 
-        Run "./usecase/tcp_term/run_dut.sh --help" for all supported options.
+        Run "./usecase/l2_switching/run_dut.sh --help" for all supported options.
 
 For more detailed usage of vpp commands in the `run_dut.sh`, refer to following links,
 
@@ -97,40 +97,43 @@ To explore more on VPP's accepted commands, please review `VPP cli reference`_.
 Test
 ~~~~
 
-Start vpp as a daemon with config parameters::
+Start another vpp instance as a daemon with config parameters::
 
-        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
+        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-tg.sock} cpu {main-core 2 corelist-workers 3}
 
 Define variable to hold the vpp cli listen socket specified in above step::
 
-        $ export sockfile=/run/vpp/cli.sock
+        $ export sockfile=/run/vpp/cli-tg.sock
 
-Create a soft traffic generator and send packets with a destination MAC address
+Create a soft traffic generator with packet destination MAC address
 of ``00:00:0a:81:00:02``::
 
-        sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-DUT1_CNF1-1
-        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
-        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif_DUT1_CNF1-2
-        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-dut-1
+        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 slave
+        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif-dut-2
+        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 slave
         sudo /path/to/vppctl -s ${sockfile} set interface mac address memif1/1 02:fe:a4:26:ca:ac
         sudo /path/to/vppctl -s ${sockfile} set interface mac address memif2/1 02:fe:51:75:42:ed
         sudo /path/to/vppctl -s ${sockfile} set int state memif1/1 up
         sudo /path/to/vppctl -s ${sockfile} set int state memif2/1 up
-        sudo /path/to/vppctl -s ${sockfile} set int ip address memif1/1 10.81.255.1/16
-        sudo /path/to/vppctl -s ${sockfile} set int ip address memif2/1 10.82.255.1/16
-        sudo /path/to/vppctl -s ${sockfile} packet-generator new {      \
+        sudo /path/to/vppctl -s ${sockfile} packet-generator new {        \
                                                 name pg0                  \
                                                 limit -1                  \
                                                 size 64-64                \
                                                 node memif1/1-output      \
                                                 tx-interface memif1/1     \
                                                 data {                    \
-                                                IP4: 00:00:0A:81:0:1 - 00:00:0A:81:0:2 -> 02:fe:a4:26:ca:f2   \
-                                                UDP: 192.81.0.1 - 192.81.0.2 -> 192.82.0.1 - 192.82.0.2       \
-                                                UDP: 1234 -> 2345     \
-                                                incrementing 8        \
+                                                IP4: 00:00:0A:81:0:1 -> 00:00:0A:81:0:2  \
+                                                UDP: 192.81.0.1 -> 192.81.0.2  \
+                                                UDP: 1234 -> 2345         \
+                                                incrementing 8            \
                                                 }                         \
                                             }
+
+
+Start to send the traffic to DUT::
+
+        sudo /path/to/vppctl -s ${sockfile} packet-generator enable-stream pg0
 
 Then ``vpp`` will forward those packets out on output interface.
 

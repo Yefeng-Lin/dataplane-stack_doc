@@ -12,14 +12,13 @@ Introduction
 ************
 
 VPP L2 Switching implements the typical switching function based on 48-bit MAC
-address. It forwards packets based on the l2fib table.
+address. It forwards packets based on the l2fib table. Below L2 features are supported:
 
-This guide explains in detail on how to use the VPP based L2 switching use case.
+- Forwarding
+- Mac Learning
+- Flooding
 
 The l2fib table starts out empty, and there are two ways to create l2fib table:
-
-- Learning
-- Flooding
 
 Learning
 ~~~~~~~~
@@ -45,28 +44,24 @@ If they are not the intended recipient, they will simply silently drop the frame
 
 When the intended device receives the frame, a response will be generated, which when sent to the VPP will allow the VPP to learn and build an entry in l2fib table.
 
+This guide explains in detail on how to use the VPP based L2 switching cases.
+
 **********
 Test Setup
 **********
 
-This guide assumes the following setup::
+.. figure:: ../images/vpp-switching.png
+   :align: center
+   :width: 400
 
-    +------------------+                              +-------------------+
-    |                  |                              |                   |
-    |  Traffic         | <--------------------------> |       DUT         |
-    |  Generator       |        connections           |                   |
-    |                  |                              |                   |
-    |                  | <--------------------------> |                   |
-    |                  |                              |                   |
-    +------------------+                              +-------------------+
-
-As shown, the Device Under Test (DUT) should have at least two connections
-to the traffic generator. The user can use any traffic generator. The connections
-can be logical memif connection to soft traffic generator located on same host
-or physical ethernet connection to external traffic generator.
+VPP switching supports DPDK interface, RDMA interface, MEMIF interface, and VETH interface.
+As shown in above diagram, this guide will demonstrate memif interace and RDMA
+interface cases for L2 switching. VPP switch instance can have two MEMIF connections
+to another VPP instance as traffic generator on same DUT, or two RDMA NIC connections
+to an external traffic generator.
 
 ****************
-Memif connection
+MEMIF connection
 ****************
 
 Setup
@@ -85,8 +80,7 @@ Define variable to hold the VPP cli listen socket specified in above step::
 
         $ export sockfile=/run/vpp/cli-dut.sock
 
-For memif connections to soft traffic generator located on same host, add following
-VPP commands to create memif interfaces and associate interfaces with a bridge domain::
+Add following VPP commands to create memif interfaces and associate interfaces with a bridge domain::
 
         sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-dut-1
         sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
@@ -166,8 +160,8 @@ Start to send the traffic to DUT::
 
 Then ``vpp`` will forward those packets out on output interface.
 
-Alternatively, for DUT with dataplane repo, user can choose to run the script `run_pg.sh` to create a soft traffic generator
-and send packets to VPP switch::
+Alternatively, for DUT with dataplane repo, user can choose to run the script `run_pg.sh`
+to create a soft traffic generator and send packets to VPP switch::
 
         $ ./usecase/l2_switching/run_pg.sh
 
@@ -191,7 +185,7 @@ Kill VPP::
         $ sudo pkill -9 vpp
 
 ****************************
-physical ethernet connection
+Physical ethernet connection
 ****************************
 
 Setup
@@ -221,13 +215,13 @@ to create ethernet interfaces and associate interfaces with a bridge domain::
         sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge eth1 10
         sudo /path/to/vppctl -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 eth1 static
 
-For ethernet connections to extern traffic generator, run `run_dut.sh -p`
-to create ethernet interfaces in VPP and associate interfaces with a bridge domain::
+Alternatively, for DUT with dataplane repo, user can run `run_dut.sh -p` to create
+ethernet interfaces in VPP and associate interfaces with a bridge domain::
 
         $ ./usecase/l2_switching/run_dut.sh -p enp1s0f0np0 enp1s0f0np1
 
 .. note::
-        Use interface names on DUT to replace sample names here.
+        Use interface names on DUT to replace sample NIC names here.
 
 Test
 ~~~~

@@ -26,20 +26,14 @@ Learning
 When VPP receives something, it takes a look at the Source MAC address field of the incoming frame. 
 It uses the Source MAC and the interface the frame was received on to build an entry in the l2fib table.
 
-As each connected device inevitably sends something, the VPP will have a fully populated l2fib table.
-This table can then be used to smartly forward frames to their intended destination.
-
 Flooding
 ~~~~~~~~
 
 The very cause of flooding is that destination MAC address of the packet is not in the l2fib table.
-
 In this case the frame will be flooded out of all interfaces. All connected device will receive the frame.
-
 The intended device will response back to the VPP and allow build an entry in l2fib table.
 
 The above is the dynamic way. In the static option, add the MAC addresses in the l2fib table manually.
-
 This guide explains in detail on how to use the VPP based L2 switching cases, and manually add l2fib table entry.
 
 **********

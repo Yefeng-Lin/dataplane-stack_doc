@@ -126,20 +126,20 @@ Start another VPP instance as a daemon with config parameters::
 
 Define variable to hold the VPP cli listen socket specified in above step::
 
-        $ export sockfile=/run/vpp/cli-tg.sock
+        $ export sockfile-tg=/run/vpp/cli-tg.sock
 
 Create a soft traffic generator with packet destination MAC address
 of ``00:00:0a:81:00:02``::
 
-        sudo /path/to/vppctl -s ${sockfile} create memif socket id 1 filename /tmp/memif-dut-1
-        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 slave
-        sudo /path/to/vppctl -s ${sockfile} create memif socket id 2 filename /tmp/memif-dut-2
-        sudo /path/to/vppctl -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 slave
-        sudo /path/to/vppctl -s ${sockfile} set interface mac address memif1/1 02:fe:a4:26:ca:ac
-        sudo /path/to/vppctl -s ${sockfile} set interface mac address memif2/1 02:fe:51:75:42:ed
-        sudo /path/to/vppctl -s ${sockfile} set int state memif1/1 up
-        sudo /path/to/vppctl -s ${sockfile} set int state memif2/1 up
-        sudo /path/to/vppctl -s ${sockfile} packet-generator new {        \
+        sudo /path/to/vppctl -s ${sockfile-tg} create memif socket id 1 filename /tmp/memif-dut-1
+        sudo /path/to/vppctl -s ${sockfile-tg} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 slave
+        sudo /path/to/vppctl -s ${sockfile-tg} create memif socket id 2 filename /tmp/memif-dut-2
+        sudo /path/to/vppctl -s ${sockfile-tg} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 slave
+        sudo /path/to/vppctl -s ${sockfile-tg} set interface mac address memif1/1 02:fe:a4:26:ca:ac
+        sudo /path/to/vppctl -s ${sockfile-tg} set interface mac address memif2/1 02:fe:51:75:42:ed
+        sudo /path/to/vppctl -s ${sockfile-tg} set int state memif1/1 up
+        sudo /path/to/vppctl -s ${sockfile-tg} set int state memif2/1 up
+        sudo /path/to/vppctl -s ${sockfile-tg} packet-generator new {        \
                                                 name pg0                  \
                                                 limit -1                  \
                                                 size 64-64                \
@@ -156,16 +156,19 @@ of ``00:00:0a:81:00:02``::
 
 Start to send the traffic to DUT::
 
-        sudo /path/to/vppctl -s ${sockfile} packet-generator enable-stream pg0
+        sudo /path/to/vppctl -s ${sockfile-tg} packet-generator enable-stream pg0
 
-Then ``vpp`` will forward those packets out on output interface.
+Then ``vpp`` will forward those packets out on output interface. After several seconds,
+run below command to check memif interfaces rx/tx counters on VPP switch instance::
+
+        sudo /path/to/vppctl -s ${sockfile} show interface
 
 Alternatively, for DUT with dataplane repo, user can choose to run the script `run_pg.sh`
 to create a soft traffic generator and send packets to VPP switch::
 
         $ ./usecase/l2_switching/run_pg.sh
 
-Run the script ``traffic_monitor.sh`` to examine interface rx/tx counters.
+Then run the script ``traffic_monitor.sh`` to examine memif interfaces rx/tx counters.
 Here is a sample output for memif interfaces::
 
         $ ./usecase/l2_switching/traffic_monitor.sh

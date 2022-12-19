@@ -57,6 +57,12 @@ MEMIF connection
 Setup
 ~~~~~
 
+The setup section will create a network topology as:
+
+.. figure:: ../images/l2_switching_memif.png
+   :align: center
+   :width: 400
+
 Start VPP as a daemon with config parameters::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-dut.sock} cpu {main-core 0 corelist-workers 1}
@@ -183,6 +189,12 @@ RDMA NIC connection
 
 Setup
 ~~~~~
+
+This guide assumes the following topology:
+
+.. figure:: ../images/l2_switching_rdma.png
+   :align: center
+   :width: 400
 
 Start VPP as a daemon with config parameters::
 

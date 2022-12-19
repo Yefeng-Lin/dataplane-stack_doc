@@ -211,7 +211,7 @@ Kill iperf3 server::
 Physical NIC
 ************
 
-This guide assmues the following setup:
+This guide assumes the following setup:
         
 .. figure:: ../images/tcp-term-nic.png
         :align: center

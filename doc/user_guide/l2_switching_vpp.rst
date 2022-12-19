@@ -184,9 +184,9 @@ Kill VPP::
 
         $ sudo pkill -9 vpp
 
-****************************
-Physical ethernet connection
-****************************
+*******************
+RDMA NIC connection
+*******************
 
 Setup
 ~~~~~

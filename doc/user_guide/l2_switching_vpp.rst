@@ -23,28 +23,24 @@ The l2fib table starts out empty, and there are two ways to create l2fib table:
 Learning
 ~~~~~~~~
 
-Every time VPP receives anything, it takes a look at the Source MAC address field of the incoming frame. 
+When VPP receives something, it takes a look at the Source MAC address field of the incoming frame. 
 It uses the Source MAC and the interface the frame was received on to build an entry in the l2fib table.
 
-Sooner or later, as each connected device inevitably sends something, the VPP will have a fully populated l2fib table.
+As each connected device inevitably sends something, the VPP will have a fully populated l2fib table.
 This table can then be used to smartly forward frames to their intended destination.
 
 Flooding
 ~~~~~~~~
 
-However, despite the learning process above, it is unavoidable that VPP will at some point receive a frame
-destined to a MAC address of which the l2fib table don't contain.
+The very cause of flooding is that destination MAC address of the packet is not in the l2fib table.
 
-In such cases, the VPP will duplicate the frame and send it out all interfaces. This action is known as Flooding.
+In this case the frame will be flooded out of all interfaces. All connected device will receive the frame.
 
-Flooding assures that if the intended device exists and if it is connected to the VPP, it will definitely receive the frame.
+The intended device will response back to the VPP and allow build an entry in l2fib table.
 
-All connected device will receive the frame and take a look at the Destination MAC address field.
-If they are not the intended recipient, they will simply silently drop the frame.
+The above is the dynamic option. In the static option, add the MAC addresses in the l2fib table manually.
 
-When the intended device receives the frame, a response will be generated, which when sent to the VPP will allow the VPP to learn and build an entry in l2fib table.
-
-This guide explains in detail on how to use the VPP based L2 switching cases.
+This guide explains in detail on how to use the VPP based L2 switching cases, and manually add l2fib table entry.
 
 **********
 Test Setup

@@ -38,7 +38,7 @@ In this case the frame will be flooded out of all interfaces. All connected devi
 
 The intended device will response back to the VPP and allow build an entry in l2fib table.
 
-The above is the dynamic option. In the static option, add the MAC addresses in the l2fib table manually.
+The above is the dynamic way. In the static option, add the MAC addresses in the l2fib table manually.
 
 This guide explains in detail on how to use the VPP based L2 switching cases, and manually add l2fib table entry.
 

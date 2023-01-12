@@ -11,7 +11,7 @@ VPP TCP Termination
 Introduction
 ************
 
-VPP's host stack is a user space implementation of several transport,
+VPP's host stack is a user space implementation of a number of transport,
 session and application layer protocols. It leverages VPP’s graph based
 forwarding model and vectorized packet processing to ensure high throughput
 and scale transport protocol termination.
@@ -19,7 +19,7 @@ and scale transport protocol termination.
 iperf3 is a tool for active measurements of the maximum achievable bandwidth on IP networks.
 
 This guide explains in detail on how to integrate iperf3 with VPP's host stack
-for tcp termination cases. The integration is done via LD_PRELOAD which
+for tcp termination cases. The integration is implemented via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP.
 
@@ -48,22 +48,18 @@ LoopBack
 Setup
 ~~~~~
 
-Start vpp as a daemon with config parameters. For more argument parameters,
-refer to `VPP configuration reference`_::
+Start vpp as a daemon with config parameters and define a veriable to hold the VPP cli listen socket
+For more argument parameters, refer to `VPP configuration reference`_::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        $ export sockfile=/run/vpp/cli.sock
 
 .. note::
         For DUT with dataplane stack repo, vpp binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vpp.
 
         For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vpp path by "which vpp".
 
-Define variable to hold the vpp cli listen socket specified in above step::
-
-        $ export sockfile=/run/vpp/cli.sock
-
-Add following VPP command configuration to create loopback interfaces and
-routes through vpp cli socket::
+Create loopback interfaces and routes by following VPP commands::
 
         sudo /path/to/vppctl -s ${sockfile} create loopback interface
         sudo /path/to/vppctl -s ${sockfile} set interface state loop0 up
@@ -103,7 +99,9 @@ Alternatively, for DUT with dataplane repo, user can choose to run script ``run_
 Test
 ~~~~
 
-Create a VCL configuration file ``vcl_iperf3_server.conf`` for iperf3 server instance::
+Create two VCL configuration file for iperf3 instance.
+
+- For server instance ``vcl_iperf3_server.conf``::
 
         vcl {
           rx-fifo-size 4000000
@@ -114,7 +112,7 @@ Create a VCL configuration file ``vcl_iperf3_server.conf`` for iperf3 server ins
           app-socket-api /var/run/vpp/app_ns_sockets/foo
         }
 
-Create a VCL configuration file ``vcl_iperf3_client.conf`` for iperf3 client instance::
+- For client instance ``vcl_iperf3_client.conf``::
 
         vcl {
           rx-fifo-size 4000000
@@ -128,7 +126,7 @@ Create a VCL configuration file ``vcl_iperf3_client.conf`` for iperf3 client ins
 The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
 Additionally, it provides the path to session layer's different app namespace socket for iperf3 client and server instances.
 
-Define following variable with the appropriate path::
+Befor start iperf3 define following variable with the appropriate path::
 
         $ export LDP_PATH=/path/to/libvcl_ldpreload.so
 
@@ -137,7 +135,7 @@ Define following variable with the appropriate path::
 
         For DUT with vpp package installed only (e.g., Arm FVP and FPGA), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so by default.
 
-To start the iperf3 server as a daemon over VPP host stack::
+To start the iperf3 server over VPP's host stack as a daemon::
 
         $ sudo taskset -c <core-list> sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
 
@@ -194,8 +192,6 @@ And then, start iperf3 client connect to server::
 
         $ iperf3 -c 127.0.0.1
 
-The measurement results will be printed like above format. Further compare the throughput performance between the two stack.
-
 Stop
 ~~~~
 
@@ -211,7 +207,7 @@ Kill iperf3 server::
 Physical NIC
 ************
 
-This guide assumes the following setup:
+This section assumes the following setup:
         
 .. figure:: ../images/tcp-term-nic.png
         :align: center
@@ -243,7 +239,7 @@ Select appropriate interface to create rdma interface and set ip address::
         sudo $(which vppctl) -s ${sockfile} set interface ip address eth0 1.1.1.2/30
         sudo $(which vppctl) -s ${sockfile} set interface state eth0 up
 
-Create a VCL configuration file ``vcl_iperf3_server.conf`` for iperf3 server instance::
+Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server.conf``::
         
         vcl {
              rx-fifo-size 4000000
@@ -293,7 +289,7 @@ If want to run iperf3 over kernel stack, start iperf3 server on DUT::
 
         $ iperf3 -4 -s D
 
-And start iperf3 client on client machine::
+And then start iperf3 client on client machine::
 
         $ iperf3 -c ${DUT_ip_address}
 

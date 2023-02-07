@@ -23,7 +23,7 @@ VPP switch can also dynamically populate its l2fib table by looking at the sourc
 address of incoming frames
 on each interface.
 
-This guide explains in detail on how to use the VPP based L2 switching cases, and manually configure l2fib table entry.
+This guide explains in detail on how to use the VPP based L2 switching cases.
 
 **********
 Test Setup
@@ -33,7 +33,7 @@ Test Setup
    :align: center
    :width: 400
 
-Interfaces supported by VPP L2 switching include but not limited to DPDK interface, 
+Interfaces supported by VPP L2 switching include but not limited to DPDK interface,
 RDMA interface, MEMIF interface, and VETH interface.
 As shown in above diagram, this guide will demonstrate memif interace and RDMA
 interface cases for L2 switching. VPP switch instance can have two MEMIF connections
@@ -53,7 +53,7 @@ The setup section will create this network topology:
    :align: center
    :width: 400
 
-Start VPP instance as a L2 switch::
+Run a VPP instance as L2 switch::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-dut.sock} cpu {main-core 1 corelist-workers 2}
 
@@ -78,6 +78,9 @@ Create memif interfaces and associate interfaces with a bridge domain::
         sudo /path/to/vppctl -s ${sockfile} set int state memif2/1 up
         sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge memif1/1 10
         sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge memif2/1 10
+
+Configure a l2fib table entry with MAC address 00:00:0A:81:0:2::
+
         sudo /path/to/vppctl -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 memif2/1 static
 
 .. note::
@@ -105,7 +108,7 @@ To explore more on VPP's accepted commands, please review `VPP cli reference`_.
 Test
 ~~~~
 
-Start another VPP instance as a software traffice generator::
+Run a VPP instance as software traffice generator::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli-tg.sock} cpu {main-core 3 corelist-workers 4}
 
@@ -140,12 +143,12 @@ Create memif interfaces and traffic generator with packet destination MAC addres
 
 Start to send the traffic to VPP switch instance::
 
-        sudo /path/to/vppctl -s ${sockfile-tg} packet-generator enable-stream pg0
+        $ sudo /path/to/vppctl -s ${sockfile-tg} packet-generator enable-stream pg0
 
 Then VPP switch instance will forward those packets out on output interface. After several seconds,
 run below command to check memif interfaces rx/tx counters on VPP switch instance::
 
-        sudo /path/to/vppctl -s ${sockfile} show interface
+        $ sudo /path/to/vppctl -s ${sockfile} show interface
 
 Alternatively, for DUT with dataplane repo, user can choose to run the script ``run_tg.sh``
 to create a software traffic generator and send packets to VPP switch::
@@ -185,7 +188,20 @@ This guide assumes the following topology:
    :align: center
    :width: 400
 
-Start VPP instance as a L2 switch::
+Find out which DUT interfaces are connected with traffic generator,
+``sudo ethtool --identify <interface>`` will typically blink a light on the NIC to help identify the
+physical port associated with the interface.
+
+Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command::
+
+        $ sudo lshw -c net -businfo
+        Bus info          Device      Class      Description
+        ====================================================
+        pci@0000:07:00.0  eth0        network    RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
+        pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
+        pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
+
+Run a VPP instance as L2 switch::
 
         $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
 
@@ -198,20 +214,10 @@ Declare a variable to hold the VPP cli listen socket specified in above step::
 
         $ export sockfile=/run/vpp/cli.sock
 
-Get interface name from ``lshw`` command::
-
-        $ sudo lshw -c net -businfo
-        Bus info          Device      Class      Description
-        ====================================================
-        pci@0000:07:00.0  eth0        network    RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
-        pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
-        pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
-
 .. note::
         Use interface names on DUT to replace sample names in following commands.
 
-For ethernet connections to extern traffic generator, add following VPP commands
-to create ethernet interfaces and associate interfaces with a bridge domain::
+Create rdma ethernet interfaces and associate them with a bridge domain::
 
         sudo /path/to/vppctl -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
         sudo /path/to/vppctl -s ${sockfile} set interface state eth0 up
@@ -219,6 +225,9 @@ to create ethernet interfaces and associate interfaces with a bridge domain::
         sudo /path/to/vppctl -s ${sockfile} set interface state eth1 up
         sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge eth0 10
         sudo /path/to/vppctl -s ${sockfile} set interface l2 bridge eth1 10
+
+Configure a l2fib table entry with MAC address 00:00:0A:81:0:2::
+
         sudo /path/to/vppctl -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 eth1 static
 
 Alternatively, for DUT with dataplane repo, user can run ``run_dut.sh -p`` to create
@@ -243,7 +252,7 @@ Here is a sample output for added MAC address entry of ethernet connection::
          00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
 
-Configure your traffic generator to send packets with a destination MAC address
+Configure traffic generator to send packets with a destination MAC address
 of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out on ``eth1``.
 
 Use the command ``show interface`` to display interface tx/rx counters.

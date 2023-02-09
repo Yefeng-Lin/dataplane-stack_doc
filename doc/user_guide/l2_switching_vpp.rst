@@ -23,16 +23,8 @@ VPP switch can also dynamically populate its l2fib table by looking at the sourc
 address of incoming frames
 on each interface.
 
-This guide explains in detail on how to use the VPP based L2 switching cases.
-
-.. figure:: ../images/vpp-switching.png
-   :align: center
-   :width: 400
-
-Interfaces supported by VPP L2 switching include but not limited to DPDK, RDMA, MEMIF, and VETH interfaces.
-As shown in above diagram, this guide will demonstrate MEMIF and RDMA cases for L2 switching.
-VPP switch instance can have two MEMIF connections to another VPP instance as traffic generator on same DUT,
-or two RDMA ethernet connections to an external user provided traffic generator.
+This guide explains in detail on how to use the VPP based L2 switch using either RDMA or MEMIF interfaces.
+Other interfaces supported by VPP(e.g. DPDK or VETH) should follow a similar setup, but are not covered in this guide.
 
 ****************
 MEMIF connection

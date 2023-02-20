@@ -19,9 +19,19 @@ and scale transport protocol termination.
 iperf3 is a tool for active measurements of the maximum achievable bandwidth on IP networks.
 
 This guide explains in detail on how to integrate iperf3 with VPP's host stack
-for tcp termination cases. The integration is implemented via LD_PRELOAD which
+for tcp termination cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP.
+
+First, ensure the proper VPP binary path. To use VPP built in dataplane-stack, run::
+
+        export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
+        export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
+
+To use package intsalled VPP (e.g. ``apt``), run::
+
+        export vpp_binary="vpp"
+        export vppctl_binary="vppctl"
 
 ********************
 Network Stack Layers
@@ -38,7 +48,7 @@ This guide demonstrates two kinds of iperf3 connection:
 - Ethernet connection between DUT and client
 
 ********
-LoopBack
+Loopback
 ********
 
 .. figure:: ../images/iperf3-loopback.png
@@ -48,38 +58,28 @@ LoopBack
 Setup
 ~~~~~
 
-Start vpp as a daemon with config parameters and define a veriable to hold the VPP cli listen socket
+Start VPP as a daemon with config parameters and define a variable with the VPP cli socket.
 For more argument parameters, refer to `VPP configuration reference`_::
 
-        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
-        $ export sockfile=/run/vpp/cli.sock
-
-.. note::
-        For DUT with dataplane stack repo, vpp binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vpp.
-
-        For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vpp path by "which vpp".
+        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        export sockfile=/run/vpp/cli.sock
 
 Create loopback interfaces and routes by following VPP commands::
 
-        sudo /path/to/vppctl -s ${sockfile} create loopback interface
-        sudo /path/to/vppctl -s ${sockfile} set interface state loop0 up
-        sudo /path/to/vppctl -s ${sockfile} create loopback interface
-        sudo /path/to/vppctl -s ${sockfile} set interface state loop1 up
-        sudo /path/to/vppctl -s ${sockfile} ip table add 1
-        sudo /path/to/vppctl -s ${sockfile} set interface ip table loop0 1
-        sudo /path/to/vppctl -s ${sockfile} ip table add 2
-        sudo /path/to/vppctl -s ${sockfile} set interface ip table loop1 2
-        sudo /path/to/vppctl -s ${sockfile} set interface ip address loop0 172.16.1.1/24
-        sudo /path/to/vppctl -s ${sockfile} set interface ip address loop1 172.16.2.1/24
-        sudo /path/to/vppctl -s ${sockfile} app ns add id foo secret 1234 sw_if_index 1
-        sudo /path/to/vppctl -s ${sockfile} app ns add id bar secret 5678 sw_if_index 2
-        sudo /path/to/vppctl -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
-        sudo /path/to/vppctl -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
-
-.. note::
-        For DUT with dataplane stack repo, vppctl binary path is components/vpp/build-root/install-vpp-native/vpp/bin/vppctl.
-
-        For DUT with vpp package installed only (e.g., Arm FVP and FPGA), find vppctl path by "which vppctl".
+        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
+        sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
+        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
+        sudo ${vppctl_binary} -s ${sockfile} set interface state loop1 up
+        sudo ${vppctl_binary} -s ${sockfile} ip table add 1
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop0 1
+        sudo ${vppctl_binary} -s ${sockfile} ip table add 2
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop1 2
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop0 172.16.1.1/24
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop1 172.16.2.1/24
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id foo secret 1234 sw_if_index 1
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id bar secret 5678 sw_if_index 2
+        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
+        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
 
 For more detailed usage on above commands, refer to following links,
 
@@ -87,19 +87,19 @@ For more detailed usage on above commands, refer to following links,
 - `VPP set interface state reference`_
 - `VPP ip route reference`_
 
-Alternatively, for DUT with dataplane repo, user can choose to run script ``run_dut.sh -l`` to setup vpp::
+Alternatively, for DUT with dataplane stack repo, user can run ``run_dut.sh -l`` to setup vpp::
 
-        $ cd /path/to/dataplane-stack
-        $ ./usecase/tcp_term/run_dut.sh -l
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/tcp_term/run_dut.sh -l
 
 .. note::
 
-        Run "./usecase/tcp_term/run_dut.sh --help" for all supported options.
+        Run ``./usecase/tcp_term/run_dut.sh --help`` for all supported options.
 
 Test
 ~~~~
 
-Create two VCL configuration file for iperf3 instance.
+Create two VCL configuration file for iperf3 instances.
 
 - For server instance ``vcl_iperf3_server.conf``::
 
@@ -126,38 +126,39 @@ Create two VCL configuration file for iperf3 instance.
 The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
 Additionally, it provides the path to session layer's different app namespace socket for iperf3 client and server instances.
 
-Befor start iperf3 define following variable with the appropriate path::
+Before start iperf3 define following variable with the appropriate path::
 
-        $ export LDP_PATH=/path/to/libvcl_ldpreload.so
+        export LDP_PATH=/path/to/libvcl_ldpreload.so
 
 .. note::
-        For DUT with dataplane stack repo, libvcl_ldpreload.so path is components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so. 
+        For DUT with dataplane stack repo, libvcl_ldpreload.so path is <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so.
 
-        For DUT with vpp package installed only (e.g., Arm FVP and FPGA), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so by default.
+        For DUT with VPP package installed (e.g. ``apt``), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so by default.
 
 To start the iperf3 server over VPP's host stack as a daemon::
 
-        $ sudo taskset -c <core-list> sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
 
-To examine the iperf3 server session in vpp, use the command ``show session verbose``.
+To examine the iperf3 server session in VPP, use the command ``show session verbose``.
 Here is a sample output for iperf3 server session::
 
-        $ sudo /path/to/vppctl -s ${sockfile} show session verbose
+        sudo /path/to/vppctl -s ${sockfile} show session verbose
         Connection                                                  State          Rx-f      Tx-f
         [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1
 
 To start the iperf3 client over VPP host stack to connect to iperf3 server::
 
-        $ sudo taskset -c <core-list> sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
+        sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
 
-Make sure that the core-list is such selected that it does not overlap vpp's cores but it maintains the same numa.
+.. note::
+        ``-c`` stand for core-list, make sure that the core-list is such selected that it does not overlap VPP's cores but it maintains the same NUMA node.
 
-Alternatively, for DUT with dataplane stack repo, user can choose to run scripts to start the iperf3 server and client::
+Alternatively, for DUT with dataplane stack repo, user can run scripts to start the iperf3 server and client::
 
-        $ cd /path/to/dataplane-stack
-        $ ./usecase/tcp_term/run_iperf3_server.sh -l
-        $ ./usecase/tcp_term/run_iperf3_client.sh
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/tcp_term/run_iperf3_server.sh -l
+        ./usecase/tcp_term/run_iperf3_client.sh
 
 If both iperf3 client and server run successfully, the measurement results will be printed::
 
@@ -183,7 +184,7 @@ For more detailed iperf3 usage, refer to following link,
 
 - `iperf3 usage reference`_
 
-Run over Kernel stack is simpler than VPP stack. 
+Run over Kernel stack is simpler than VPP stack.
 First, start iperf3 serevr::
 
         $ iperf3 -4 -s -D
@@ -208,7 +209,7 @@ Physical NIC
 ************
 
 This section assumes the following setup:
-        
+
 .. figure:: ../images/tcp-term-nic.png
         :align: center
         :width: 400
@@ -219,14 +220,14 @@ The DUT run iperf3 in server mode and the client machine run iperf3 in client mo
 Setup
 ~~~~~
 
-Start vpp as a daemon with config parameters and define variable to hold the vpp cli listen socket::
+Start vpp as a daemon with config parameters and define a variable with the vpp cli listen socket::
 
-        $ sudo /path/to/vpp unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
-        $ export sockfile=/run/vpp/cli.sock
+        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        export sockfile=/run/vpp/cli.sock
 
 Get interface name from lshw command::
 
-        $ sudo lshw -c net -businfo
+        sudo lshw -c net -businfo
         Bus info          Device      Class      Description
         ====================================================
         pci@0000:07:00.0  eth0        network    RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
@@ -235,12 +236,12 @@ Get interface name from lshw command::
 
 Select appropriate interface to create rdma interface and set ip address::
 
-        sudo $(which vppctl) -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
-        sudo $(which vppctl) -s ${sockfile} set interface ip address eth0 1.1.1.2/30
-        sudo $(which vppctl) -s ${sockfile} set interface state eth0 up
+        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
+        sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
 
 Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server.conf``::
-        
+
         vcl {
              rx-fifo-size 4000000
              tx-fifo-size 4000000
@@ -255,15 +256,23 @@ Test
 
 Define following variable with the appropriate path::
 
-        $ export LDP_PATH=/path/to/libvcl_ldpreload.so
+        export LDP_PATH=/path/to/libvcl_ldpreload.so
+
+.. note::
+        For DUT with dataplane stack repo, libvcl_ldpreload.so path is <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so.
+
+        For DUT with VPP package installed (e.g. ``apt``), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so by default.
 
 On DUT start the iperf3 server as a daemon over VPP host stack::
 
-        $ sudo taskset -c <core-list> sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
 
 On client machine start the iperf3 client to connect to iperf3 server::
 
-        $ sudo taskset -c <core-list> iperf3 -c 1.1.1.2
+        sudo taskset -c 3 iperf3 -c 1.1.1.2
+
+.. note::
+        ``-c`` stand for core-list, make sure that the core-list is such selected that it does not overlap VPP's cores but it maintains the same NUMA node.
 
 If both iperf3 client and server run successfully, the measurement results will be printed::
 
@@ -287,11 +296,11 @@ If both iperf3 client and server run successfully, the measurement results will 
 
 If want to run iperf3 over kernel stack, start iperf3 server on DUT::
 
-        $ iperf3 -4 -s D
+        iperf3 -4 -s D
 
-And then start iperf3 client on client machine::
+And then, start iperf3 client on client machine::
 
-        $ iperf3 -c ${DUT_ip_address}
+        iperf3 -c ${DUT_ip_address}
 
 .. note::
         ``DUT_ip_address:`` DUT's ip address.
@@ -301,21 +310,21 @@ Stop
 
 Kill vpp::
 
-        $ sudo pkill -9 vpp
+        sudo pkill -9 vpp
 
 Kill iperf3 server::
 
-        $ sudo pkill -9 iperf3
+        sudo pkill -9 iperf3
 
 ********************
 Tips for performance
 ********************
 
-For jumbo packets, increase vpp tcp mtu and buffer size to improve the performance. 
+For jumbo packets, increase vpp tcp mtu and buffer size to improve the performance.
 Below is vpp example config::
 
         tcp {
-            cc-algo cubic 
+            cc-algo cubic
             mtu 9000
         }
         buffers {

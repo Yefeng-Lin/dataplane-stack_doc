@@ -45,11 +45,11 @@ Network Stack Layers
 This guide demonstrates two kinds of iperf3 connection:
 
 - Loopback connection on one DUT
-- Ethernet connection between DUT and client
+- RDMA ethernet connection between DUT and client
 
-********
-Loopback
-********
+*******************
+Loopback Connection
+*******************
 
 .. figure:: ../images/iperf3-loopback.png
    :align: center
@@ -204,9 +204,9 @@ Kill iperf3 server::
 
         $ sudo pkill -9 iperf3
 
-************
-Physical NIC
-************
+************************
+RDMA Ethernet Connection
+************************
 
 This section assumes the following setup:
 

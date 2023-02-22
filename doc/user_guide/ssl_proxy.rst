@@ -30,7 +30,7 @@ First, ensure the proper VPP binary path. To use VPP built in dataplane-stack, r
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
 
-To use package intsalled VPP (e.g. ``apt``), run::
+To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run::
 
         export vpp_binary="vpp"
         export vppctl_binary="vppctl"
@@ -49,9 +49,9 @@ This guide demonstrates two kinds of ssl proxy connection:
 - Loopback connection on one DUT
 - RDMA ethernet connection between DUT and client/server
 
-********
-Loopback
-********
+*******************
+Loopback Connection
+*******************
 
 .. figure:: ../images/iperf3-loopback.png
    :align: center
@@ -69,7 +69,7 @@ Download, patch, build wrk2 for aarch64::
         make all
         export wrk=<nw_ds_workspace>/wrk2-aarch64/wrk
 
-Create ssl private keys and cerfificates for nginx https proxy and server::
+Create ssl private keys and certificates for nginx https proxy and server::
 
         sudo mkdir -p /etc/nginx/certs
         sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
@@ -80,7 +80,7 @@ Create ssl private keys and cerfificates for nginx https proxy and server::
         You will be asked a series of questions in order to embed the information
         correctly in the certificate. Fill out the prompts appropriately.
 
-Create config file nginx_server.conf for nginx https server::
+Create config file ``nginx_server.conf`` for nginx https server::
 
         user www-data;
         worker_processes 1;
@@ -117,7 +117,7 @@ Create config file nginx_server.conf for nginx https server::
                 }
         }
 
-Create config file nginx_proxy.conf for nginx https proxy::
+Create config file ``nginx_proxy.conf`` for nginx https proxy::
 
         user www-data;
         worker_processes 1;
@@ -139,7 +139,7 @@ Create config file nginx_proxy.conf for nginx https proxy::
                 error_log /dev/null crit;
 
                 upstream ssl_file_server_com {
-                        server 127.0.0.1:8443;
+                        server 172.16.1.1:8443;
                         keepalive 1024;
                 }
 
@@ -163,6 +163,19 @@ Create config file nginx_proxy.conf for nginx https proxy::
                         }
                 }
         }
+
+For more detailed usage on above nginx configuration, refer to following links,
+
+- `nginx core functionality reference`_
+- `nginx http core module reference`_
+- `nginx http upstream module reference`_
+- `nginx http proxy module reference`_
+- `nginx http ssl module reference`_
+
+Create 1kb file in nginx https server root directory::
+
+        sudo mkdir -p /var/www/html
+        sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
 
 Start VPP as a daemon with config parameters and declare a variable with the VPP cli socket.
 For more argument parameters, refer to `VPP configuration reference`_::
@@ -200,6 +213,64 @@ For more detailed usage on above commands, refer to following links,
 - `VPP set interface ip address reference`_
 - `VPP set interface state reference`_
 - `VPP ip route reference`_
+- `VPP app ns reference`_
+
+Create VCL configuration files for wrk2 and nginx.
+
+- For nginx https server ``vcl_nginx_server.conf``::
+
+        vcl {
+                heapsize 64M
+                segment-size 4000000000
+                add-segment-size 4000000000
+                rx-fifo-size 4000000
+                tx-fifo-size 4000000
+                namespace-id server
+                namespace-secret 1234
+                app-scope-global
+                app-socket-api /var/run/vpp/app_ns_sockets/server
+        }
+
+- For nginx https proxy ``vcl_nginx_proxy.conf``::
+
+        vcl {
+                heapsize 64M
+                segment-size 4000000000
+                add-segment-size 4000000000
+                rx-fifo-size 4000000
+                tx-fifo-size 4000000
+                namespace-id proxy
+                namespace-secret 1234
+                app-scope-global
+                app-socket-api /var/run/vpp/app_ns_sockets/proxy
+        }
+
+- For wrk2 https client ``vcl_wrk2.conf``::
+
+        vcl {
+                heapsize 64M
+                segment-size 4000000000
+                add-segment-size 4000000000
+                rx-fifo-size 4000000
+                tx-fifo-size 4000000
+                namespace-id client
+                namespace-secret 1234
+                app-scope-global
+                app-socket-api /var/run/vpp/app_ns_sockets/client
+        }
+
+The above configure vcl to request 4MB receive and transmit fifo sizes and access
+to global session scope. Additionally, they provide the path to session layer's
+different app namespace socket for wrk2 and nginx instances.
+
+Declare a variable to hold the path to libvcl_ldpreload.so::
+
+        export LDP_PATH=/path/to/libvcl_ldpreload.so
+
+.. note::
+        For VPP built in dataplane stack repo, libvcl_ldpreload.so path is <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so.
+
+        For package installed VPP (e.g. ``apt``, ``buildroot``), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so or /usr/lib/aarch64-linux-gnu/libvcl_ldpreload.so by default.
 
 Alternatively, for DUT with dataplane stack repo, user can run ``run_dut.sh -l`` to setup vpp::
 
@@ -213,60 +284,31 @@ Alternatively, for DUT with dataplane stack repo, user can run ``run_dut.sh -l``
 Test
 ~~~~
 
-Create two VCL configuration file for iperf3 instances.
+Start nginx https server over VPP's host stack::
 
-- For server instance ``vcl_iperf3_server.conf``::
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_server.conf nginx -c /path/to/nginx_server.conf"
 
-        vcl {
-          rx-fifo-size 4000000
-          tx-fifo-size 4000000
-          namespace-id foo
-          namespace-secret 1234
-          app-scope-global
-          app-socket-api /var/run/vpp/app_ns_sockets/foo
-        }
+Start nginx https proxy over VPP's host stack::
 
-- For client instance ``vcl_iperf3_client.conf``::
+        sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_proxy.conf nginx -c /path/to/nginx_proxy.conf"
 
-        vcl {
-          rx-fifo-size 4000000
-          tx-fifo-size 4000000
-          namespace-id bar
-          namespace-secret 5678
-          app-scope-global
-          app-socket-api /var/run/vpp/app_ns_sockets/bar
-        }
+To examine the nginx sessions in VPP, run the command ``show session verbose``.
+Here is a sample output for nginx sessions::
 
-The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
-Additionally, it provides the path to session layer's different app namespace socket for iperf3 client and server instances.
-
-Before start iperf3 define following variable with the appropriate path::
-
-        export LDP_PATH=/path/to/libvcl_ldpreload.so
-
-.. note::
-        For DUT with dataplane stack repo, libvcl_ldpreload.so path is <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so.
-
-        For DUT with VPP package installed (e.g. ``apt``), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so by default.
-
-To start the iperf3 server over VPP's host stack as a daemon::
-
-        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
-
-To examine the iperf3 server session in VPP, use the command ``show session verbose``.
-Here is a sample output for iperf3 server session::
-
-        sudo /path/to/vppctl -s ${sockfile} show session verbose
+        // To be added
+        sudo ${vppctl_binary} -s ${sockfile} show session verbose
         Connection                                                  State          Rx-f      Tx-f
         [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1
 
-To start the iperf3 client over VPP host stack to connect to iperf3 server::
+Start wrk2 client over VPP's host stack to test ssl proxy with a 1kb file::
 
-        sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
+        sudo taskset -c 4 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_wrk2.conf /wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
 
 .. note::
-        ``-c`` stand for core-list, make sure that the core-list is such selected that it does not overlap VPP's cores but it maintains the same NUMA node.
+        Extremely high rate (--rate) is used to ensure throughput is measured.
+        Number of connections (-c) is set to 10 to produce high throughput.
+        Test duration (-d) is 60 seconds which is a sufficient amount of time to get repeatable results.
 
 Alternatively, for DUT with dataplane stack repo, user can run scripts to start the iperf3 server and client::
 
@@ -274,8 +316,9 @@ Alternatively, for DUT with dataplane stack repo, user can run scripts to start 
         ./usecase/tcp_term/run_iperf3_server.sh -l
         ./usecase/tcp_term/run_iperf3_client.sh
 
-If both iperf3 client and server run successfully, the measurement results will be printed::
+If both wrk2 and nginx run successfully, wrk2 will print the measurement results::
 
+        // to be added
         Connecting to host 172.16.1.1, port 5201
         [ 33] local 172.16.2.1 port 43757 connected to 172.16.1.1 port 5201
         [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
@@ -294,33 +337,20 @@ If both iperf3 client and server run successfully, the measurement results will 
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
-For more detailed iperf3 usage, refer to following link,
-
-- `iperf3 usage reference`_
-
-Run over Kernel stack is simpler than VPP stack.
-First, start iperf3 serevr::
-
-        $ iperf3 -4 -s -D
-
-And then, start iperf3 client connect to server::
-
-        $ iperf3 -c 127.0.0.1
-
 Stop
 ~~~~
 
-Kill vpp::
+Kill VPP::
 
         $ sudo pkill -9 vpp
 
-Kill iperf3 server::
+Kill nginx::
 
-        $ sudo pkill -9 iperf3
+        $ sudo pkill -9 nginx
 
-************
-Physical NIC
-************
+************************
+RDMA Ethernet Connection
+************************
 
 This section assumes the following setup:
 
@@ -453,5 +483,11 @@ Resources
 #. `VPP set interface ip address reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_ip.html#set-interface-ip-address>`_
 #. `VPP set interface state reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
 #. `VPP ip route reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_ip.html#ip-route>`_
+#. `VPP app ns reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_session.html#app-ns>`_
 #. `VPP cli reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/index.html>`_
 #. `iperf3 usage reference <https://software.es.net/iperf/invoking.html>`_
+#. `nginx core functionality reference <https://nginx.org/en/docs/ngx_core_module.html>`_
+#. `nginx http core module reference <https://nginx.org/en/docs/http/ngx_http_core_module.html>`_
+#. `nginx http upstream module reference <https://nginx.org/en/docs/http/ngx_http_upstream_module.html>`_
+#. `nginx http proxy module reference <https://nginx.org/en/docs/http/ngx_http_proxy_module.html>`_
+#. `nginx http ssl module reference <https://nginx.org/en/docs/http/ngx_http_ssl_module.html>`_

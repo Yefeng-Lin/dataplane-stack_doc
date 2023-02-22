@@ -80,11 +80,91 @@ Create ssl private keys and cerfificates for nginx https proxy and server::
         You will be asked a series of questions in order to embed the information
         correctly in the certificate. Fill out the prompts appropriately.
 
-Create config file for nginx https server::
+Create config file nginx_server.conf for nginx https server::
 
-Create config file for nginx https proxy::
+        user www-data;
+        worker_processes 1;
+        worker_cpu_affinity 100;
+        pid /run/nginx_server.pid;
 
-Start VPP as a daemon with config parameters and define a variable with the VPP cli socket.
+        events {
+        }
+
+        http {
+                sendfile on;
+                tcp_nopush on;
+                tcp_nodelay on;
+                keepalive_requests 1000000000;
+
+                default_type application/octet-stream;
+
+                access_log off;
+                error_log /dev/null crit;
+
+                server {
+                        listen 8443 ssl;
+                        server_name $hostname;
+                        ssl_protocols TLSv1.3;
+                        ssl_prefer_server_ciphers on;
+                        ssl_certificate /etc/nginx/certs/server.crt;
+                        ssl_certificate_key /etc/nginx/certs/server.key;
+                        ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256;
+                        root /var/www/html;
+
+                        location / {
+                                try_files $uri $uri/ =404;
+                        }
+                }
+        }
+
+Create config file nginx_proxy.conf for nginx https proxy::
+
+        user www-data;
+        worker_processes 1;
+        worker_cpu_affinity 1000;
+        pid /run/nginx_proxy.pid;
+
+        events {
+        }
+
+        http {
+                sendfile on;
+                tcp_nopush on;
+                tcp_nodelay on;
+                keepalive_requests 1000000000;
+
+                default_type application/octet-stream;
+
+                access_log off;
+                error_log /dev/null crit;
+
+                upstream ssl_file_server_com {
+                        server 127.0.0.1:8443;
+                        keepalive 1024;
+                }
+
+                server {
+                        listen 8089 ssl;
+                        server_name $hostname;
+                        ssl_protocols TLSv1.3;
+                        ssl_prefer_server_ciphers on;
+                        ssl_certificate /etc/nginx/certs/proxy.crt;
+                        ssl_certificate_key /etc/nginx/certs/proxy.key;
+                        ssl_conf_command Ciphersuites TLS_AES_128_GCM_SHA256;
+
+                        location / {
+                                limit_except GET {
+                                deny all;
+                                }
+                                proxy_pass https://ssl_file_server_com;
+                                proxy_http_version 1.1;
+                                proxy_set_header Connection "";
+                                proxy_ssl_protocols TLSv1.3;
+                        }
+                }
+        }
+
+Start VPP as a daemon with config parameters and declare a variable with the VPP cli socket.
 For more argument parameters, refer to `VPP configuration reference`_::
 
         sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
@@ -96,16 +176,24 @@ Create loopback interfaces and routes by following VPP commands::
         sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
         sudo ${vppctl_binary} -s ${sockfile} create loopback interface
         sudo ${vppctl_binary} -s ${sockfile} set interface state loop1 up
+        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
+        sudo ${vppctl_binary} -s ${sockfile} set interface state loop2 up
         sudo ${vppctl_binary} -s ${sockfile} ip table add 1
         sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop0 1
         sudo ${vppctl_binary} -s ${sockfile} ip table add 2
         sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop1 2
+        sudo ${vppctl_binary} -s ${sockfile} ip table add 3
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop2 3
         sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop0 172.16.1.1/24
         sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop1 172.16.2.1/24
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id foo secret 1234 sw_if_index 1
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id bar secret 5678 sw_if_index 2
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop2 172.16.3.1/24
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id server secret 1234 sw_if_index 1
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id proxy secret 1234 sw_if_index 2
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id client secret 1234 sw_if_index 3
         sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
+        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.3.1/32 table 2 via lookup in table 3
         sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
+        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 3 via lookup in table 2
 
 For more detailed usage on above commands, refer to following links,
 

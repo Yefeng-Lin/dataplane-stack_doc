@@ -37,7 +37,7 @@ To use package intsalled VPP (e.g. ``apt``), run::
         export vppctl_binary="vppctl"
 
 ****************
-MEMIF connection
+MEMIF Connection
 ****************
 
 Setup

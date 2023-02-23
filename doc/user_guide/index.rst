@@ -281,5 +281,5 @@ Use Cases
 
    ipv4_l3fwd
    ipv4_vpp
-   tcp_term
    l2_switching_vpp
+   tcp_term

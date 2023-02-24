@@ -235,7 +235,7 @@ Get interface name ``enP1p1s0f0`` from ``lshw`` command::
 Script Running
 ==============
 
-On DUT run scripts in dataplane-stack repo to setup DUT and start iperf3 over
+On DUT run scripts in dataplane-stack repo to setup DUT and start iperf3 server over
 VPP's host stack::
 
         cd <nw_ds_workspace>/dataplane-stack

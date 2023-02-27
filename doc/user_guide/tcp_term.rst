@@ -38,7 +38,7 @@ To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run::
         export LDP_PATH="/system_lib_path/libvcl_ldpreload.so"
 
 .. note::
-        The system lib path can be /usr/lib or /usr/lib/aarch64-linux-gnu
+        The system lib path can be ``/usr/lib`` or ``/usr/lib/aarch64-linux-gnu``.
 
 ********************
 Network Stack Layers
@@ -96,8 +96,8 @@ If the case runs successfully, the measurement results will be printed::
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
 .. note::
-        VPP's host stack doesn't support tcp socket option TCP_INFO to get tcp
-        connection information, so Retr and Cwnd columns in above output are meaningless.
+        VPP's host stack doesn't support tcp socket option ``TCP_INFO`` to get tcp
+        connection information, so ``Retr`` and ``Cwnd`` columns in above output are meaningless.
 
 Stop case::
 

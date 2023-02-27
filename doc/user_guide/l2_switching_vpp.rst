@@ -26,22 +26,24 @@ on each interface.
 This guide explains in detail on how to use the VPP based L2 Switching using either RDMA or MEMIF interfaces.
 Other interfaces supported by VPP(e.g. DPDK or VETH) should follow a similar setup, but are not covered in this guide.
 
-First, ensure the proper VPP binary path. To use VPP built in dataplane-stack, run::
+First, ensure the proper VPP binary and library path. To use VPP built in dataplane-stack, run::
 
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
 
-To use package intsalled VPP (e.g. ``apt``), run::
+To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run::
 
         export vpp_binary="vpp"
         export vppctl_binary="vppctl"
+        export LDP_PATH="/system_lib_path/libvcl_ldpreload.so"
+
+.. note::
+        The system lib path can be ``/usr/lib`` or ``/usr/lib/aarch64-linux-gnu``.
 
 ****************
 MEMIF Connection
 ****************
-
-Setup
-~~~~~
 
 The setup section will create this network topology:
 
@@ -49,9 +51,43 @@ The setup section will create this network topology:
    :align: center
    :width: 400
 
+Script Running
+==============
+
+Users can run scripts in dataplane-stack repo to setup DUT and test tcp termination case quickly::
+
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/l2_switching/run_dut.sh -m -c 1
+        ./usecase/l2_switching/run_tg.sh -c 2,3
+        ./usecase/l2_switching/traffic_monitor.sh
+
+..note::
+        Run ``./usecase/l2_switching/run_dut.sh --help`` for all supported options.
+
+If the case runs successfully, the measurement results will be printed::
+         
+        Name          Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+        local0           0     down          0/0/0/0
+        memif1/1         1      up          9000/0/0/0         rx packets       35205632
+                                                               rx bytes       2253160448
+        memif2/1         2      up          9000/0/0/0         tx packets       35205632
+                                                               tx bytes       2253160448
+                                                         
+Stop case::
+
+        ./usecase/tcp_term/stop.sh
+
+CLI Running
+===========
+
+Users can also use command lines to setup DUT and test L2 switching step by step.
+
+DUT Setup
+~~~~~~~~~
+
 Run a VPP instance as L2 switch::
 
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli-dut.sock} cpu {main-core 1 corelist-workers 2}
+        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli-dut.sock} cpu {main-core 1 corelist-workers 0}
 
 Declare a variable to hold the VPP cli listen socket specified in above step::
 
@@ -74,15 +110,6 @@ Configure a l2fib table entry with MAC address 00:00:0A:81:0:2::
 
         sudo ${vppctl_binary} -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 memif2/1 static
 
-Alternatively, for DUT with dataplane repo, user can choose to run script ``run_dut.sh -m`` to start VPP as a L2 switch::
-
-        cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/l2_switching/run_dut.sh -m
-
-.. note::
-
-        Run ``./usecase/l2_switching/run_dut.sh --help`` for all supported options.
-
 For more detailed usage of VPP commands used above, refer to following links,
 
 - `VPP memif interface reference`_
@@ -104,7 +131,7 @@ Here is a sample output for the static l2fib entry added previously::
 
 Run a VPP instance as software traffice generator::
 
-        sudo ${vpp_binary}  unix {cli-listen /run/vpp/cli-tg.sock} cpu {main-core 3 corelist-workers 4}
+        sudo ${vpp_binary}  unix {cli-listen /run/vpp/cli-tg.sock} cpu {main-core 2 corelist-workers 3}
 
 Declare a variable to hold the VPP cli listen socket specified in above step::
 
@@ -144,23 +171,7 @@ run below command to check memif interfaces rx/tx counters on VPP switch instanc
 
         sudo ${vppctl_binary} -s ${sockfile} show interface
 
-Alternatively, for DUT with dataplane repo, user can choose to run the script ``run_tg.sh``
-to create a software traffic generator and send packets to VPP switch::
-
-        cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/l2_switching/run_tg.sh
-
-Then run the script ``traffic_monitor.sh`` to examine memif interfaces rx/tx counters.
-Here is a sample output for memif interfaces::
-
-        ./usecase/l2_switching/traffic_monitor.sh
-
-          Name          Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
-        local0           0     down          0/0/0/0
-        memif1/1         1      up          9000/0/0/0         rx packets       35205632
-                                                               rx bytes       2253160448
-        memif2/1         2      up          9000/0/0/0         tx packets       35205632
-                                                               tx bytes       2253160448
+If the case runs successfully, the measurement results are similar to those shown in the script running section.
 
 Stop
 ~~~~
@@ -172,9 +183,6 @@ Kill VPP::
 ************************
 RDMA Ethernet connection
 ************************
-
-Setup
-~~~~~
 
 This section will create this setup:
 
@@ -195,9 +203,43 @@ Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command::
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
+Script Running
+==============
+
+Run scripts in dataplane-stack repo to setup DUT::
+
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/l2_switching/run_dut.sh -p enp1s0f0np0,enp1s0f0np1 -c 1
+
+Configure traffic generator to send packets with a destination MAC address of ``00:00:0a:81:00:02``.
+To display interface tx/rx counters::
+
+        ./usecase/l2_switching/traffic_monitor.sh
+
+Here is a sample output for ethernet interfaces::
+
+        sudo ${vppctl_binary} -s ${sockfile} show interface
+
+         Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+        local0               0     down          0/0/0/0
+        eth0                 1      up          9000/0/0/0     rx packets              25261056
+                                                               rx bytes             37891584000
+        eth1                 2      up          9000/0/0/0     tx packets              25261056
+                                                       tx bytes             37891584000 
+
+Stop case::
+
+        ./usecase/l2_switching/stop.sh
+
+CLI Running
+===========
+
+DUT Setup
+~~~~~~~~~
+
 Run a VPP instance as L2 switch::
 
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
+        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 0}
 
 Declare a variable to hold the VPP cli listen socket specified in above step::
 
@@ -244,16 +286,7 @@ Configure traffic generator to send packets with a destination MAC address
 of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out on ``eth1``.
 
 Use the command ``show interface`` to display interface tx/rx counters.
-Here is a sample output for ethernet interfaces::
-
-        sudo ${vppctl_binary} -s ${sockfile} show interface
-
-          Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
-         local0               0     down          0/0/0/0
-         eth0                 1      up          9000/0/0/0     rx packets              25261056
-                                                                rx bytes             37891584000
-         eth1                 2      up          9000/0/0/0     tx packets              25261056
-                                                                tx bytes             37891584000
+If the case runs successfully, the results are similar to those shown in the script running section.
 
 Stop
 ~~~~

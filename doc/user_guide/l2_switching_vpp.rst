@@ -184,9 +184,6 @@ Kill VPP::
 RDMA Ethernet Connection
 ************************
 
-Setup
-~~~~~
-
 This section will create this setup:
 
 .. figure:: ../images/l2_switching_rdma.png

@@ -53,9 +53,9 @@ This guide demonstrates two kinds of ssl proxy connection:
 Loopback Connection
 *******************
 
-.. figure:: ../images/iperf3-loopback.png
+.. figure:: ../images/ssl_proxy_memif.png
    :align: center
-   :width: 300
+   :width: 800
 
 Setup
 ~~~~~
@@ -354,9 +354,9 @@ RDMA Ethernet Connection
 
 This section assumes the following setup:
 
-.. figure:: ../images/tcp-term-nic.png
+.. figure:: ../images/ssl_proxy_rdma.png
         :align: center
-        :width: 400
+        :width: 800
 
 As shown, the Device Under Test (DUT) should have at least one NIC connected to the client machine.
 The DUT run iperf3 in server mode and the client machine run iperf3 in client mode.

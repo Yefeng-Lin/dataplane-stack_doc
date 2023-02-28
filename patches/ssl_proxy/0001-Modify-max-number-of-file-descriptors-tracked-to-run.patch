@@ -1,0 +1,25 @@
+From caeec3ae5668902af36a0f31e0649127936f0036 Mon Sep 17 00:00:00 2001
+From: yeflin01 <yefeng.lin@arm.com>
+Date: Fri, 3 Feb 2023 17:12:13 +0800
+Subject: [PATCH] Modify max number of file descriptors tracked to run over vpp
+
+---
+ src/wrk.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/wrk.c b/src/wrk.c
+index 28ed17e..113e2b0 100644
+--- a/src/wrk.c
++++ b/src/wrk.c
+@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
+     uint64_t thread_init = time_us();
+     for (uint64_t i = 0; i < cfg.threads; i++) {
+         thread *t = &threads[i];
+-        t->loop        = aeCreateEventLoop(10 + cfg.connections * 3);
++        t->loop        = aeCreateEventLoop(31 + cfg.connections * 3);
+         t->connections = connections;
+         t->throughput = throughput;
+         t->reconnect_all = NULL;
+-- 
+2.17.1
+

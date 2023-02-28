@@ -25,15 +25,20 @@ host stack for ssl proxy cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP.
 
-First, ensure the proper VPP binary path. To use VPP built in dataplane-stack, run::
+First, ensure the proper VPP binary and library path. To use VPP built in dataplane-stack, run::
 
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
 
 To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run::
 
         export vpp_binary="vpp"
         export vppctl_binary="vppctl"
+        export LDP_PATH="/system_lib_path/libvcl_ldpreload.so"
+
+.. note::
+        The system lib path can be ``/usr/lib`` or ``/usr/lib/aarch64-linux-gnu``.
 
 ********************
 Network Stack Layers
@@ -65,7 +70,7 @@ Download, patch, build wrk2 for aarch64::
         cd <nw_ds_workspace>/dataplane-stack
         git clone https://github.com/AmpereTravis/wrk2-aarch64.git
         cd wrk2-aarch64
-        patch ----- TBD
+        git am <nw_ds_workspace>/dataplane-stack/patches/ssl_proxy/0001-Modify-max-number-of-file-descriptors-tracked-to-run.patch
         make all
         export wrk=<nw_ds_workspace>/wrk2-aarch64/wrk
 

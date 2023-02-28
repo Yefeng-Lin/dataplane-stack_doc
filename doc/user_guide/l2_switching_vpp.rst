@@ -23,8 +23,8 @@ VPP switch can also dynamically populate its l2fib table by looking at the sourc
 address of incoming frames
 on each interface.
 
-This guide explains in detail on how to use the VPP based L2 Switching using either RDMA or MEMIF interfaces.
-Other interfaces supported by VPP(e.g. DPDK or VETH) should follow a similar setup,
+This guide explains in detail on how to use the VPP based L2 Switching using either MEMIF or RDMA interfaces.
+Other interfaces supported by VPP (e.g. DPDK or VETH) should follow a similar setup,
 but are not covered in this guide. Users can utilize scripts in dataplane-stack repo
 to run cases quickly, or use detailed command lines in this guide to run cases step by step.
 
@@ -132,7 +132,7 @@ To explore more on VPP's accepted commands, please review `VPP cli reference`_.
 Test
 ~~~~
 
-Run a VPP instance as software traffice generator::
+Run a VPP instance as software traffic generator::
 
         sudo ${vpp_binary}  unix {cli-listen /run/vpp/cli-tg.sock} cpu {main-core 3 corelist-workers 4}
 
@@ -164,11 +164,11 @@ Create memif interfaces and traffic generator with packet destination MAC addres
                                                 }                         \
                                             }
 
-Start to send the traffic to VPP switch instance::
+Start to send the traffic to VPP switch instance over memif1/1::
 
         sudo ${vppctl_binary} -s ${sockfile-tg} packet-generator enable-stream pg0
 
-Then VPP switch instance will forward those packets out on output MEMIF interface.
+Then VPP switch instance will forward those packets out on interface memif2/2.
 After several seconds, run below command to check memif interfaces rx/tx counters on VPP switch instance::
 
         sudo ${vppctl_binary} -s ${sockfile} show interface

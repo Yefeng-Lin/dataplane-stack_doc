@@ -62,10 +62,31 @@ Loopback Connection
    :align: center
    :width: 800
 
+Script Running
+==============
+
+Users can run scripts in dataplane-stack repo to setup DUT and test ssl proxy case quickly::
+
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/ssl_proxy/run_dut.sh -l -c 1
+        ./usecase/ssl_proxy/run_nginx_server.sh -l -c 2
+        ./usecase/ssl_proxy/run_nginx_proxy.sh -l -c 3 
+        ./usecase/ssl_proxy/run_wrk2.sh -c 3 
+
+.. note::
+        Run ``./usecase/ssl_proxy/run_dut.sh --help`` for all supported options.
+
+Stop case::
+
+        ./usecase/ssl_proxy/stop.sh
+
+CLI Running
+===========
+
 Setup
 ~~~~~
 
-Download, patch, build wrk2 for aarch64::
+Download, patch, build wrk2 for aarch64 platform::
 
         cd <nw_ds_workspace>/dataplane-stack
         git clone https://github.com/AmpereTravis/wrk2-aarch64.git
@@ -85,11 +106,10 @@ Create ssl private keys and certificates for nginx https proxy and server::
         You will be asked a series of questions in order to embed the information
         correctly in the certificate. Fill out the prompts appropriately.
 
-Create config file ``nginx_server.conf`` for nginx https server::
+Create nginx config file ``nginx_server.conf`` for nginx https server::
 
         user www-data;
         worker_processes 1;
-        worker_cpu_affinity 100;
         pid /run/nginx_server.pid;
 
         events {
@@ -122,11 +142,10 @@ Create config file ``nginx_server.conf`` for nginx https server::
                 }
         }
 
-Create config file ``nginx_proxy.conf`` for nginx https proxy::
+Create nginx config file ``nginx_proxy.conf`` for nginx https proxy::
 
         user www-data;
         worker_processes 1;
-        worker_cpu_affinity 1000;
         pid /run/nginx_proxy.pid;
 
         events {
@@ -225,43 +244,43 @@ Create VCL configuration files for wrk2 and nginx.
 - For nginx https server ``vcl_nginx_server.conf``::
 
         vcl {
-                heapsize 64M
-                segment-size 4000000000
-                add-segment-size 4000000000
-                rx-fifo-size 4000000
-                tx-fifo-size 4000000
-                namespace-id server
-                namespace-secret 1234
-                app-scope-global
-                app-socket-api /var/run/vpp/app_ns_sockets/server
+          heapsize 64M
+          segment-size 4000000000
+          add-segment-size 4000000000
+          rx-fifo-size 4000000
+          tx-fifo-size 4000000
+          namespace-id server
+          namespace-secret 1234
+          app-scope-global
+          app-socket-api /var/run/vpp/app_ns_sockets/server
         }
 
 - For nginx https proxy ``vcl_nginx_proxy.conf``::
 
         vcl {
-                heapsize 64M
-                segment-size 4000000000
-                add-segment-size 4000000000
-                rx-fifo-size 4000000
-                tx-fifo-size 4000000
-                namespace-id proxy
-                namespace-secret 1234
-                app-scope-global
-                app-socket-api /var/run/vpp/app_ns_sockets/proxy
+          heapsize 64M
+          segment-size 4000000000
+          add-segment-size 4000000000
+          rx-fifo-size 4000000
+          tx-fifo-size 4000000
+          namespace-id proxy
+          namespace-secret 1234
+          app-scope-global
+          app-socket-api /var/run/vpp/app_ns_sockets/proxy
         }
 
 - For wrk2 https client ``vcl_wrk2.conf``::
 
         vcl {
-                heapsize 64M
-                segment-size 4000000000
-                add-segment-size 4000000000
-                rx-fifo-size 4000000
-                tx-fifo-size 4000000
-                namespace-id client
-                namespace-secret 1234
-                app-scope-global
-                app-socket-api /var/run/vpp/app_ns_sockets/client
+          heapsize 64M
+          segment-size 4000000000
+          add-segment-size 4000000000
+          rx-fifo-size 4000000
+          tx-fifo-size 4000000
+          namespace-id client
+          namespace-secret 1234
+          app-scope-global
+          app-socket-api /var/run/vpp/app_ns_sockets/client
         }
 
 The above configure vcl to request 4MB receive and transmit fifo sizes and access
@@ -357,24 +376,20 @@ Kill nginx::
 RDMA Ethernet Connection
 ************************
 
-This section assumes the following setup:
+This section will create this setup:
 
 .. figure:: ../images/ssl_proxy_rdma.png
         :align: center
         :width: 800
 
-As shown, the Device Under Test (DUT) should have at least one NIC connected to the client machine.
-The DUT run iperf3 in server mode and the client machine run iperf3 in client mode.
+As shown, the DUT should have one NIC interface connected to the wrk2 https client,
+and another NIC interface connected to the nginx https server.
 
-Setup
-~~~~~
+Find out which DUT interfaces are connected with https client/server.
+``sudo ethtool --identify <interface>`` will typically blink a light on the NIC to help identify the
+physical port associated with the interface.
 
-Start vpp as a daemon with config parameters and define a variable with the vpp cli listen socket::
-
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
-        export sockfile=/run/vpp/cli.sock
-
-Get interface name from lshw command::
+Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command::
 
         sudo lshw -c net -businfo
         Bus info          Device      Class      Description
@@ -383,22 +398,78 @@ Get interface name from lshw command::
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
-Select appropriate interface to create rdma interface and set ip address::
+Script Running
+==============
+
+On DUT run scripts in dataplane-stack repo to setup DUT and run nginx https proxy
+over VPP's host stack::
+
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/ssl_proxy/run_dut.sh -p enP1p1s0f0,enP1p1s0f1 -c 1,2
+        ./usecase/ssl_proxy/run_nginx_proxy.sh -p -c 3 
+
+On https server machine run script in dataplane-stack repo to start nginx https server::
+
+        cd <nw_ds_workspace>/dataplane-stack
+        ./usecase/ssl_proxy/run_nginx_server.sh -p
+
+On https client machine download, build, and run wrk2 to test ssl proxy::
+
+        x86: git clone https://github.com/giltene/wrk2.git && cd wrk2
+        OR
+        aarch64: git clone https://github.com/AmpereTravis/wrk2-aarch64.git && cd wrk2-aarch64
+        make all
+        sudo taskset -c 1 ./wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.1.1:8089/1kb"
+ 
+Stop case::
+
+        ./usecase/ssl_proxy/stop.sh
+
+CLI Running
+===========
+
+DUT Setup
+~~~~~~~~~
+
+Start vpp as a daemon with config parameters and declare a variable with the vpp cli socket::
+
+        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        export sockfile="/run/vpp/cli.sock"
+
+Create rdma ethernet interfaces and set ip addresses::
 
         sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
         sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
         sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
+        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f1 name eth1
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth1 1.1.2.1/30
+        sudo ${vppctl_binary} -s ${sockfile} set interface state eth1 up
 
-Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server.conf``::
+Create a VCL configuration file for nginx https proxy ``vcl_nginx_proxy_pn.conf``::
 
         vcl {
-             rx-fifo-size 4000000
-             tx-fifo-size 4000000
-             app-scope-global
-             app-socket-api /var/run/vpp/app_ns_sockets/default
-           }
+          heapsize 64M
+          segment-size 4000000000
+          add-segment-size 4000000000
+          rx-fifo-size 4000000
+          tx-fifo-size 4000000
+          app-socket-api /var/run/vpp/app_ns_sockets/default
+        }
 
-The above configure vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
+The above configures vcl to request 4MB receive and transmit fifo sizes and it
+provides the path to vpp's session layer socket api.
+
+Create ssl private key and certificate for nginx https proxy::
+
+        sudo mkdir -p /etc/nginx/certs
+        sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/proxy.key -out /etc/nginx/certs/proxy.crt
+
+Create nginx config file ``nginx_proxy.conf`` for nginx https proxy. It is same
+as the ``nginx_proxy.conf`` in loopback connection section. 
+
+Start nginx https proxy over VPP's host stack::
+
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_proxy_pn.conf nginx -c /path/to/nginx_proxy.conf"
 
 Test
 ~~~~

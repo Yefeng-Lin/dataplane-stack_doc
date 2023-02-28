@@ -236,6 +236,9 @@ Stop case::
 CLI Running
 ===========
 
+DUT Setup
+~~~~~~~~~
+
 Run a VPP instance as L2 switch::
 
         sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
@@ -275,9 +278,9 @@ For more detailed usage of VPP rdma command used above, refer to following link,
 Test
 ~~~~
 
-Configure traffic generator to send packets to DUT input interface ``eth0``
-with a destination MAC address of ``00:00:0a:81:00:02``, then VPP switch will
-forward those packets out on ``eth1``.
+Configure traffic generator to send packets to VPP input interface ``eth0``,
+which is ``enp1s0f0np0`` on DUT, with a destination MAC address of ``00:00:0a:81:00:02``,
+then VPP switch will forward those packets out on VPP interface ``eth1``, which is ``enp1s0f0np1`` on DUT.
 
 Use the command ``show interface`` to display interface tx/rx counters. The output
 will be similar to the previous script running section.

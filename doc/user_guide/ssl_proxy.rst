@@ -25,7 +25,7 @@ host stack for ssl proxy cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP.
 
-First, ensure the proper VPP binary and library path. To use VPP built in dataplane-stack, run::
+First, ensure the proper VPP binary and library path. To use VPP built in dataplane-stack repo, run::
 
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
@@ -47,7 +47,7 @@ Network Stack Layers
 .. figure:: ../images/kernel-vpp-stack.png
    :align: center
 
-   Linux kernel stack VS VPP hoststack.
+   Linux kernel stack VS VPP's host stack
 
 This guide demonstrates two kinds of ssl proxy connection:
 
@@ -61,6 +61,9 @@ Loopback Connection
 .. figure:: ../images/ssl_proxy_memif.png
    :align: center
    :width: 800
+
+.. note::
+        This setup requires 4 isolated cpu cores. 
 
 Script Running
 ==============
@@ -76,6 +79,8 @@ Users can run scripts in dataplane-stack repo to setup DUT and test ssl proxy ca
 .. note::
         Run ``./usecase/ssl_proxy/run_dut.sh --help`` for all supported options.
 
+If the case runs successfully, the measurement results will be printed::
+        // TBA
 Stop case::
 
         ./usecase/ssl_proxy/stop.sh
@@ -83,15 +88,15 @@ Stop case::
 CLI Running
 ===========
 
-Setup
-~~~~~
+DUT Setup
+~~~~~~~~~
 
 Download, patch, build wrk2 for aarch64 platform::
 
         cd <nw_ds_workspace>/dataplane-stack
         git clone https://github.com/AmpereTravis/wrk2-aarch64.git
         cd wrk2-aarch64
-        git am <nw_ds_workspace>/dataplane-stack/patches/ssl_proxy/0001-Modify-max-number-of-file-descriptors-tracked-to-run.patch
+        git am <nw_ds_workspace>/dataplane-stack/patches/wrk2/0001-wrk2-fd-vpp.patch
         make all
         export wrk=<nw_ds_workspace>/wrk2-aarch64/wrk
 
@@ -127,7 +132,7 @@ Create nginx config file ``nginx_server.conf`` for nginx https server::
                 error_log /dev/null crit;
 
                 server {
-                        listen 8443 ssl;
+                        listen 8445 ssl;
                         server_name $hostname;
                         ssl_protocols TLSv1.3;
                         ssl_prefer_server_ciphers on;
@@ -163,7 +168,7 @@ Create nginx config file ``nginx_proxy.conf`` for nginx https proxy::
                 error_log /dev/null crit;
 
                 upstream ssl_file_server_com {
-                        server 172.16.1.1:8443;
+                        server 172.16.1.1:8445;
                         keepalive 1024;
                 }
 
@@ -205,7 +210,7 @@ Start VPP as a daemon with config parameters and declare a variable with the VPP
 For more argument parameters, refer to `VPP configuration reference`_::
 
         sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
-        export sockfile=/run/vpp/cli.sock
+        export sockfile="/run/vpp/cli.sock"
 
 Create loopback interfaces and routes by following VPP commands::
 
@@ -239,7 +244,7 @@ For more detailed usage on above commands, refer to following links,
 - `VPP ip route reference`_
 - `VPP app ns reference`_
 
-Create VCL configuration files for wrk2 and nginx.
+Create VCL configuration files for wrk2 and nginx instances.
 
 - For nginx https server ``vcl_nginx_server.conf``::
 
@@ -287,24 +292,6 @@ The above configure vcl to request 4MB receive and transmit fifo sizes and acces
 to global session scope. Additionally, they provide the path to session layer's
 different app namespace socket for wrk2 and nginx instances.
 
-Declare a variable to hold the path to libvcl_ldpreload.so::
-
-        export LDP_PATH=/path/to/libvcl_ldpreload.so
-
-.. note::
-        For VPP built in dataplane stack repo, libvcl_ldpreload.so path is <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so.
-
-        For package installed VPP (e.g. ``apt``, ``buildroot``), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so or /usr/lib/aarch64-linux-gnu/libvcl_ldpreload.so by default.
-
-Alternatively, for DUT with dataplane stack repo, user can run ``run_dut.sh -l`` to setup vpp::
-
-        cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/tcp_term/run_dut.sh -l
-
-.. note::
-
-        Run ``./usecase/tcp_term/run_dut.sh --help`` for all supported options.
-
 Test
 ~~~~
 
@@ -325,7 +312,7 @@ Here is a sample output for nginx sessions::
         [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1
 
-Start wrk2 client over VPP's host stack to test ssl proxy with a 1kb file::
+Start wrk2 client over VPP's host stack to test ssl proxy with 1kb file downloading::
 
         sudo taskset -c 4 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_wrk2.conf /wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
 
@@ -334,13 +321,7 @@ Start wrk2 client over VPP's host stack to test ssl proxy with a 1kb file::
         Number of connections (-c) is set to 10 to produce high throughput.
         Test duration (-d) is 60 seconds which is a sufficient amount of time to get repeatable results.
 
-Alternatively, for DUT with dataplane stack repo, user can run scripts to start the iperf3 server and client::
-
-        cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/tcp_term/run_iperf3_server.sh -l
-        ./usecase/tcp_term/run_iperf3_client.sh
-
-If both wrk2 and nginx run successfully, wrk2 will print the measurement results::
+If both wrk2 and nginx run successfully, wrk2 will output the measurement results::
 
         // to be added
         Connecting to host 172.16.1.1, port 5201
@@ -419,7 +400,7 @@ On https client machine download, build, and run wrk2 to test ssl proxy::
         OR
         aarch64: git clone https://github.com/AmpereTravis/wrk2-aarch64.git && cd wrk2-aarch64
         make all
-        sudo taskset -c 1 ./wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.1.1:8089/1kb"
+        sudo taskset -c 1 ./wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
  
 Stop case::
 
@@ -474,82 +455,35 @@ Start nginx https proxy over VPP's host stack::
 Test
 ~~~~
 
-Define following variable with the appropriate path::
+On https server machine create ssl private key and certificate for nginx https server::
 
-        export LDP_PATH=/path/to/libvcl_ldpreload.so
+        sudo mkdir -p /etc/nginx/certs
+        sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
 
-.. note::
-        For DUT with dataplane stack repo, libvcl_ldpreload.so path is <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so.
+Create nginx config file ``nginx_server.conf`` for nginx https server. It is same
+as the ``nginx_server.conf`` in loopback connection section. 
 
-        For DUT with VPP package installed (e.g. ``apt``), libvcl_ldpreload.so path is is /usr/lib/libvcl_ldpreload.so by default.
+Create 1kb file in nginx https server root directory::
 
-On DUT start the iperf3 server as a daemon over VPP host stack::
+        sudo mkdir -p /var/www/html
+        sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
 
-        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server.conf iperf3 -4 -s -D"
+Start nginx https server::
 
-On client machine start the iperf3 client to connect to iperf3 server::
+        sudo taskset -c 1 nginx -c /path/to/nginx_server.conf
 
-        sudo taskset -c 3 iperf3 -c 1.1.1.2
-
-.. note::
-        ``-c`` stand for core-list, make sure that the core-list is such selected that it does not overlap VPP's cores but it maintains the same NUMA node.
-
-If both iperf3 client and server run successfully, the measurement results will be printed::
-
-        Connecting to host 172.16.1.1, port 5201
-        [ 33] local 172.16.2.1 port 43757 connected to 172.16.1.1 port 5201
-        [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
-        [ 33]   0.00-1.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
-        [ 33]   1.00-2.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
-        [ 33]   2.00-3.00   sec  2.23 GBytes  19.1 Gbits/sec  65535    555 MBytes
-        [ 33]   3.00-4.00   sec  2.23 GBytes  19.2 Gbits/sec    0    555 MBytes
-        [ 33]   4.00-5.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
-        [ 33]   5.00-6.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
-        [ 33]   6.00-7.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
-        [ 33]   7.00-8.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
-        [ 33]   8.00-9.00   sec  2.23 GBytes  19.2 Gbits/sec    0    555 MBytes
-        [ 33]   9.00-10.00  sec  2.23 GBytes  19.2 Gbits/sec    0   -1874590816.00 Bytes
-        - - - - - - - - - - - - - - - - - - - - - - - - -
-        [ ID] Interval           Transfer     Bitrate         Retr
-        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
-        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
-
-If want to run iperf3 over kernel stack, start iperf3 server on DUT::
-
-        iperf3 -4 -s D
-
-And then, start iperf3 client on client machine::
-
-        iperf3 -c ${DUT_ip_address}
-
-.. note::
-        ``DUT_ip_address:`` DUT's ip address.
+Refer to wrk2 part in script running section to run wrk to test ssl proxy.
 
 Stop
 ~~~~
 
-Kill vpp::
+Kill VPP on DUT::
 
         sudo pkill -9 vpp
 
-Kill iperf3 server::
+Kill nginx on DUT and https server::
 
-        sudo pkill -9 iperf3
-
-********************
-Tips for performance
-********************
-
-For jumbo packets, increase vpp tcp mtu and buffer size to improve the performance.
-Below is vpp example config::
-
-        tcp {
-            cc-algo cubic
-            mtu 9000
-        }
-        buffers {
-            default data-size 10000
-        }
+        sudo pkill -9 nginx
 
 *********
 Resources

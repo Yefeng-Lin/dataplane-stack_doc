@@ -63,10 +63,10 @@ fi
 
 echo "Found VPP's library at: $(ls ${LDP_PATH})"
 
-VCL_PROXY_CONF=vcl_proxy.conf
+VCL_PROXY_CONF=vcl_nginx_proxy.conf
 NGINX_PROXY_CONF=nginx_proxy.conf
 
 echo "=========="
 echo "Starting Proxy"
-sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${PRLOAD_PATH} VCL_CONFIG=${DIR}/${VCL_PROXY_CONF} nginx -c /etc/nginx/${NGINX_PROXY_CONF}"
+sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_PROXY_CONF} nginx -c /etc/nginx/${NGINX_PROXY_CONF}"
 echo "Done!!"

@@ -90,14 +90,14 @@ echo "Found VPP's library at: $(ls ${LDP_PATH})"
 
 echo "=========="
 echo "Starting wrk2 test..."
-for e in ${SIZE_ARR[@]}
-do
-    if [ -n "$LOOPBACK" ]; then
-        sudo taskset -c ${CORE_LIST} sh -c "LD_PRELOAD=${PRLOAD_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ../../../wrk2-aarch64/wrk --rate 100000000 -t 1 -c 30 -d 2s https://172.16.2.1:8089/${e}"
-    fi
 
-    if [ -n "$PHY_IFACE" ]; then
-        sudo taskset -c ${CORE_LIST} sh -c "../../../wrk2-aarch64/wrk --rate 100000000 -t 1 -c 30 -d 2s https://172.16.2.1:8089/${e}"
-    fi
-done
+VCL_WRK_CONF=vcl_wrk2.conf
+if [ -n "$LOOPBACK" ]; then
+    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ../../../wrk2-aarch64/wrk --rate 100000000 -t 1 -c 30 -d 2s https://172.16.2.1:8089/1kb"
+fi
+
+if [ -n "$PHY_IFACE" ]; then
+    sudo taskset -c ${CORELIST} sh -c "${DIR}/../../wrk2-aarch64/wrk --rate 100000000 -t 1 -c 30 -d 2s https://172.16.2.1:8089/1kb"
+fi
+
 echo "Done!!"

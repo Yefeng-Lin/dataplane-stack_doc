@@ -94,13 +94,13 @@ if [ ${PHY_IFACE} ]; then
     source ${DIR}/setup.sh -p
 fi
 
-VCL_SERVER_CONF=vcl_nginx.conf
+VCL_SERVER_CONF=vcl_nginx_proxy.conf
 NGINX_SERVER_CONF=nginx_server.conf
 
 echo "=========="
 echo "Starting Serevr"
 if [ -n "$LOOPBACK" ]; then
-    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${PRLOAD_PATH} VCL_CONFIG=${DIR}/${VCL_SERVER_CONF} nginx -c /etc/nginx/${NGINX_SERVER_CONF}"
+    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_SERVER_CONF} nginx -c /etc/nginx/${NGINX_SERVER_CONF}"
 fi
 if [ -n "$PHY_IFACE" ]; then
     sudo taskset -c ${CORELIST} sh -c "nginx -c /etc/nginx/${NGINX_SERVER_CONF}"

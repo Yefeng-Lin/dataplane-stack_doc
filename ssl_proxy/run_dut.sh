@@ -25,31 +25,31 @@ help_func()
 
 loopback()
 {
-    sudo $(which vppctl) -s ${sockfile} create loopback interface 
-    sudo $(which vppctl) -s ${sockfile} set interface mtu packet 1500 loop0
-    sudo $(which vppctl) -s ${sockfile} set interface state loop0 up
-    sudo $(which vppctl) -s ${sockfile} create loopback interface
-    sudo $(which vppctl) -s ${sockfile} set interface mtu packet 1500 loop1
-    sudo $(which vppctl) -s ${sockfile} set interface state loop1 up
-    sudo $(which vppctl) -s ${sockfile} create loopback interface
-    sudo $(which vppctl) -s ${sockfile} set interface mtu packet 1500 loop2
-    sudo $(which vppctl) -s ${sockfile} set interface state loop2 up
-    sudo $(which vppctl) -s ${sockfile} ip table add 1
-    sudo $(which vppctl) -s ${sockfile} set interface ip table loop0 1
-    sudo $(which vppctl) -s ${sockfile} ip table add 2
-    sudo $(which vppctl) -s ${sockfile} set interface ip table loop1 2
-    sudo $(which vppctl) -s ${sockfile} ip table add 3 
-    sudo $(which vppctl) -s ${sockfile} set interface ip table loop2 3
-    sudo $(which vppctl) -s ${sockfile} set interface ip address loop0 172.16.1.1/24
-    sudo $(which vppctl) -s ${sockfile} set interface ip address loop1 172.16.2.1/24
-    sudo $(which vppctl) -s ${sockfile} set interface ip address loop2 172.16.3.1/24
-    sudo $(which vppctl) -s ${sockfile} app ns add id nginx secret 1234 sw_if_index 1
-    sudo $(which vppctl) -s ${sockfile} app ns add id proxy secret 5678 sw_if_index 2
-    sudo $(which vppctl) -s ${sockfile} app ns add id wrk secret 5678 sw_if_index 3
-    sudo $(which vppctl) -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
-    sudo $(which vppctl) -s ${sockfile} ip route add 172.16.3.1/32 table 2 via lookup in table 3
-    sudo $(which vppctl) -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
-    sudo $(which vppctl) -s ${sockfile} ip route add 172.16.2.1/32 table 3 via lookup in table 2
+    sudo ${vppctl_binary} -s ${sockfile} create loopback interface 
+    sudo ${vppctl_binary} -s ${sockfile} set interface mtu packet 1500 loop0
+    sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
+    sudo ${vppctl_binary} -s ${sockfile} create loopback interface
+    sudo ${vppctl_binary} -s ${sockfile} set interface mtu packet 1500 loop1
+    sudo ${vppctl_binary} -s ${sockfile} set interface state loop1 up
+    sudo ${vppctl_binary} -s ${sockfile} create loopback interface
+    sudo ${vppctl_binary} -s ${sockfile} set interface mtu packet 1500 loop2
+    sudo ${vppctl_binary} -s ${sockfile} set interface state loop2 up
+    sudo ${vppctl_binary} -s ${sockfile} ip table add 1
+    sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop0 1
+    sudo ${vppctl_binary} -s ${sockfile} ip table add 2
+    sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop1 2
+    sudo ${vppctl_binary} -s ${sockfile} ip table add 3 
+    sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop2 3
+    sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop0 172.16.1.1/24
+    sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop1 172.16.2.1/24
+    sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop2 172.16.3.1/24
+    sudo ${vppctl_binary} -s ${sockfile} app ns add id nginx secret 1234 sw_if_index 1
+    sudo ${vppctl_binary} -s ${sockfile} app ns add id proxy secret 1234 sw_if_index 2
+    sudo ${vppctl_binary} -s ${sockfile} app ns add id client secret 1234 sw_if_index 3
+    sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
+    sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.3.1/32 table 2 via lookup in table 3
+    sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
+    sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 3 via lookup in table 2
 }
 
 btw_network()
@@ -71,8 +71,6 @@ btw_network()
     sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 2 via lookup in table 1
     sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 1 via lookup in table 2
 }
-
-source setup.sh
 
 DIR=$(cd "$(dirname "$0")";pwd)
 
@@ -168,15 +166,21 @@ fi
 echo "Found VPP binary at: $(command -v ${vpp_binary})"
 echo "Found VPPCTL binary at: $(command -v ${vppctl_binary})"
 
+source setup.sh
 sockfile="/run/vpp/cli-master.sock"
  
-sudo $(which vpp) unix { cli-listen ${sockfile} }                   \
+sudo ${vpp_binary} unix { cli-listen ${sockfile} }                   \
                   cpu { main-core ${MAINCORE} workers 0 } \
 		  tcp { cc-algo cubic }                             \
 		  plugins { plugin dpdk_plugin.so { disable } }     \
 		  session { enable use-app-socket-api }             \
  
-sleep 10
+echo "VPP starting up"
+for i in `seq 10`; do
+    echo -n "."
+    sleep 1
+done
+echo " "
 
 if [ -n "$LOOPBACK" ]; then
     echo "Setting loopback interfaces..."
@@ -186,3 +190,5 @@ if [ -n "$PHY_IFACE" ]; then
     echo "Setting rdma host-if..."
     btw_network    
 fi
+
+echo "Done!!"

@@ -25,7 +25,7 @@ host stack for ssl proxy cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP.
 
-First, ensure the proper VPP binary and library path. To use VPP built in dataplane-stack repo, run::
+First, ensure the proper VPP binary and library path on DUT. To use VPP built in dataplane-stack repo, run::
 
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
@@ -63,7 +63,8 @@ Loopback Connection
    :width: 800
 
 .. note::
-        This setup requires 4 isolated cpu cores. 
+        This setup requires 4 isolated cpu cores. On platforms without enough
+        isolated cores, degraded performance will be observed.
 
 Script Running
 ==============
@@ -91,7 +92,8 @@ CLI Running
 DUT Setup
 ~~~~~~~~~
 
-Download, patch, build wrk2 for aarch64 platform::
+If no package installed wrk2 available, download, patch, and build wrk2 for aarch64
+platform firstly::
 
         cd <nw_ds_workspace>/dataplane-stack
         git clone https://github.com/AmpereTravis/wrk2-aarch64.git
@@ -192,6 +194,9 @@ Create nginx config file ``nginx_proxy.conf`` for nginx https proxy::
                         }
                 }
         }
+
+.. note::
+        The https server ip address is used as the upstream server in ``nginx_proxy.conf`` file.
 
 For more detailed usage on above nginx configuration, refer to following links,
 
@@ -324,23 +329,6 @@ Start wrk2 client over VPP's host stack to test ssl proxy with 1kb file download
 If both wrk2 and nginx run successfully, wrk2 will output the measurement results::
 
         // to be added
-        Connecting to host 172.16.1.1, port 5201
-        [ 33] local 172.16.2.1 port 43757 connected to 172.16.1.1 port 5201
-        [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
-        [ 33]   0.00-1.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
-        [ 33]   1.00-2.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
-        [ 33]   2.00-3.00   sec  2.23 GBytes  19.1 Gbits/sec  65535    555 MBytes
-        [ 33]   3.00-4.00   sec  2.23 GBytes  19.2 Gbits/sec    0    555 MBytes
-        [ 33]   4.00-5.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
-        [ 33]   5.00-6.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
-        [ 33]   6.00-7.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
-        [ 33]   7.00-8.00   sec  2.23 GBytes  19.2 Gbits/sec  65535    555 MBytes
-        [ 33]   8.00-9.00   sec  2.23 GBytes  19.2 Gbits/sec    0    555 MBytes
-        [ 33]   9.00-10.00  sec  2.23 GBytes  19.2 Gbits/sec    0   -1874590816.00 Bytes
-        - - - - - - - - - - - - - - - - - - - - - - - - -
-        [ ID] Interval           Transfer     Bitrate         Retr
-        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
-        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
 Stop
 ~~~~

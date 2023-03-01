@@ -52,7 +52,7 @@ Network Stack Layers
 This guide demonstrates two kinds of ssl proxy connection:
 
 - Loopback connection on one DUT
-- RDMA ethernet connection between DUT and client/server
+- RDMA ethernet connection between DUT and client/server nodes
 
 *******************
 Loopback Connection
@@ -74,14 +74,24 @@ Users can run scripts in dataplane-stack repo to setup DUT and test ssl proxy ca
         cd <nw_ds_workspace>/dataplane-stack
         ./usecase/ssl_proxy/run_dut.sh -l -c 1
         ./usecase/ssl_proxy/run_nginx_server.sh -l -c 2
-        ./usecase/ssl_proxy/run_nginx_proxy.sh -l -c 3 
-        ./usecase/ssl_proxy/run_wrk2.sh -c 3 
+        ./usecase/ssl_proxy/run_nginx_proxy.sh -c 3 
+        ./usecase/ssl_proxy/run_wrk2.sh -c 4 
 
 .. note::
         Run ``./usecase/ssl_proxy/run_dut.sh --help`` for all supported options.
 
 If the case runs successfully, the measurement results will be printed::
-        // TBA
+
+        Initialised 1 threads in 0 ms.
+        Running 10s test @ https://172.16.2.1:8089/1kb
+          1 threads and 10 connections
+          Thread Stats   Avg      Stdev     Max   +/- Stdev
+            Latency     5.00s     2.87s    9.99s    57.76%
+            Req/Sec        nan       nan   0.00      0.00%
+          750658 requests in 10.00s, 0.89GB read
+        Requests/sec:  75065.43
+        Transfer/sec:     91.49MB
+
 Stop case::
 
         ./usecase/ssl_proxy/stop.sh
@@ -89,13 +99,16 @@ Stop case::
 CLI Running
 ===========
 
+Users can also follow below step by step instructions to setup wrk2, nginx, VPP
+and run ssl proxy over loopback connection on DUT.
+
 DUT Setup
 ~~~~~~~~~
 
 If no package installed wrk2 available, download, patch, and build wrk2 for aarch64
 platform firstly::
 
-        cd <nw_ds_workspace>/dataplane-stack
+        cd <nw_ds_workspace>/dataplane-stack/components
         git clone https://github.com/AmpereTravis/wrk2-aarch64.git
         cd wrk2-aarch64
         git am <nw_ds_workspace>/dataplane-stack/patches/wrk2/0001-wrk2-fd-vpp.patch
@@ -311,15 +324,16 @@ Start nginx https proxy over VPP's host stack::
 To examine the nginx sessions in VPP, run the command ``show session verbose``.
 Here is a sample output for nginx sessions::
 
-        // To be added
         sudo ${vppctl_binary} -s ${sockfile} show session verbose
         Connection                                                  State          Rx-f      Tx-f
-        [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
-        Thread 0: active sessions 1
+        [0:0][T] 172.16.2.1:8089->0.0.0.0:0                         LISTEN         0         0
+        [0:1][T] 172.16.1.1:8443->0.0.0.0:0                         LISTEN         0         0
+        Thread 0: active sessions 2
+
 
 Start wrk2 client over VPP's host stack to test ssl proxy with 1kb file downloading::
 
-        sudo taskset -c 4 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_wrk2.conf /wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
+        sudo taskset -c 4 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_wrk2.conf wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
 
 .. note::
         Extremely high rate (--rate) is used to ensure throughput is measured.
@@ -375,14 +389,14 @@ over VPP's host stack::
 
         cd <nw_ds_workspace>/dataplane-stack
         ./usecase/ssl_proxy/run_dut.sh -p enP1p1s0f0,enP1p1s0f1 -c 1,2
-        ./usecase/ssl_proxy/run_nginx_proxy.sh -p -c 3 
+        ./usecase/ssl_proxy/run_nginx_proxy.sh -c 3 
 
-On https server machine run script in dataplane-stack repo to start nginx https server::
+On https server node run script in dataplane-stack repo to start nginx https server::
 
         cd <nw_ds_workspace>/dataplane-stack
         ./usecase/ssl_proxy/run_nginx_server.sh -p
 
-On https client machine download, build, and run wrk2 to test ssl proxy::
+On https client node download, build, and run wrk2 to test ssl proxy::
 
         x86: git clone https://github.com/giltene/wrk2.git && cd wrk2
         OR
@@ -397,6 +411,9 @@ Stop case::
 CLI Running
 ===========
 
+Users can also follow below step by step instructions to setup wrk2, nginx, VPP
+and run ssl proxy over RDMA ethernet connection between DUT and https client/server nodes.
+
 DUT Setup
 ~~~~~~~~~
 
@@ -408,10 +425,10 @@ Start vpp as a daemon with config parameters and declare a variable with the vpp
 Create rdma ethernet interfaces and set ip addresses::
 
         sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 172.16.1.2/30
         sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
         sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f1 name eth1
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth1 1.1.2.1/30
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth1 172.16.2.1/30
         sudo ${vppctl_binary} -s ${sockfile} set interface state eth1 up
 
 Create a VCL configuration file for nginx https proxy ``vcl_nginx_proxy_pn.conf``::
@@ -440,10 +457,18 @@ Start nginx https proxy over VPP's host stack::
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_proxy_pn.conf nginx -c /path/to/nginx_proxy.conf"
 
+To examine the nginx proxy session in VPP, run the command ``show session verbose``.
+Here is a sample output for nginx proxy session::
+
+        sudo ${vppctl_binary} -s ${sockfile} show session verbose
+        Connection                                                  State          Rx-f      Tx-f
+        [0:0][T] 0.0.0.0:8089->0.0.0.0:0                         LISTEN         0         0
+        Thread 0: active sessions 1 
+
 Test
 ~~~~
 
-On https server machine create ssl private key and certificate for nginx https server::
+On https server node create ssl private key and certificate for nginx https server::
 
         sudo mkdir -p /etc/nginx/certs
         sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt

@@ -8,12 +8,14 @@
 
 help_func()
 {
-    echo "Usage: ./run_proxy.sh OPTS [ARGS]"
-    echo "where  OPTS := -c set cpu affinity of iperf3 client"
+    echo "Usage: ./run_nginx_proxy.sh OPTS [ARGS]"
+    echo "where  OPTS := -l ssl proxy test via loopback interface"
+    echo "            := -p ssl proxy test via physical NIC"
+    echo "            := -c set cpu affinity of nginx proxy server, example: -c 3"
     echo "            := -h help"
-    echo "       ARGS := \"-c\" need cpu isolation core number, example: -c 3"
     echo "Example:"
-    echo "  ./run_proxy.sh -c 3"
+    echo "  ./run_nginx_proxy.sh -l -c 3"
+    echo "  ./run_nginx_proxy.sh -p -c 3"
     echo
 }
 
@@ -24,6 +26,14 @@ while [ $# -gt 0 ]; do
       --help | -h)
           help_func
           exit 0
+          ;;
+      -l)
+          export LOOPBACK="1"
+          shift 1
+          ;;
+      -p)
+          export PHY_IFACE="1"
+          shift 1
           ;;
       -c)
           if [ "$#" -lt "2" ]; then
@@ -40,6 +50,18 @@ while [ $# -gt 0 ]; do
           ;;
     esac
 done
+
+if [[ ${LOOPBACK} && ${PHY_IFACE} ]]; then
+      echo "Don't support set both -l and -p at the same time!!"
+      help_func
+      exit 1
+fi
+
+if ! [[ ${LOOPBACK} || ${PHY_IFACE} ]]; then
+      echo "Need a option: \"-l\" or \"-p\""
+      help_func
+      exit 1
+fi
 
 if ! [ ${CORELIST} ]; then
       echo "error: \"-c\" option bad usage"
@@ -64,9 +86,12 @@ fi
 echo "Found VPP's library at: $(ls ${LDP_PATH})"
 
 VCL_PROXY_CONF=vcl_nginx_proxy.conf
+if [ ${PHY_IFACE} ]; then
+    VCL_PROXY_CONF=vcl_nginx_proxy_pn.conf
+fi
 NGINX_PROXY_CONF=nginx_proxy.conf
 
 echo "=========="
 echo "Starting Proxy"
-sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_PROXY_CONF} nginx -c /etc/nginx/${NGINX_PROXY_CONF}"
+sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_PROXY_CONF} nginx -c ${DIR}/${NGINX_PROXY_CONF}"
 echo "Done!!"

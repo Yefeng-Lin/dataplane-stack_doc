@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2022, Arm Limited.
+# Copyright (c) 2023, Arm Limited.
 #
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,11 +12,11 @@ help_func()
     echo "Usage: ./run_dut.sh OPTS [ARGS]"
     echo "where  OPTS := -l ssl proxy test via loopback interface"
     echo "            := -p ssl proxy test via physical NIC"
-    echo "            := -c assign VPP main thread to a cpu isolation core"
-    echo "            := -h help"
-    echo "       ARGS := \"-p\" need two physical NIC interface names, example: -p inputNIC,outputNIC"
+    echo "               one NIC connected to wrk2 client and another NIC connected to nginx server"
+    echo "               example: -p serverNIC,clientNIC"
     echo "               using \"lshw -c net -businfo\" get interface names"
-    echo "            := \"-c\" need a cpu isolation core number, example: -c 1"
+    echo "            := -c assign VPP main thread to a cpu isolation core, example: -c 1"
+    echo "            := -h help"
     echo "Example:"
     echo "  ./run_dut.sh -l -c 1"
     echo "  ./run_dut.sh -p enp1s0f0np0,enp1s0f0np1 -c 1"
@@ -26,13 +26,10 @@ help_func()
 loopback()
 {
     sudo ${vppctl_binary} -s ${sockfile} create loopback interface 
-    sudo ${vppctl_binary} -s ${sockfile} set interface mtu packet 1500 loop0
     sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
     sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-    sudo ${vppctl_binary} -s ${sockfile} set interface mtu packet 1500 loop1
     sudo ${vppctl_binary} -s ${sockfile} set interface state loop1 up
     sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-    sudo ${vppctl_binary} -s ${sockfile} set interface mtu packet 1500 loop2
     sudo ${vppctl_binary} -s ${sockfile} set interface state loop2 up
     sudo ${vppctl_binary} -s ${sockfile} ip table add 1
     sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop0 1
@@ -62,14 +59,6 @@ btw_network()
     sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if ${NIC_name[1]} name eth1
     sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth1 172.16.2.1/24
     sudo ${vppctl_binary} -s ${sockfile} set interface state eth1 up
-    sudo ${vppctl_binary} -s ${sockfile} ip table add 1
-    sudo ${vppctl_binary} -s ${sockfile} set interface ip table eth0 1
-    sudo ${vppctl_binary} -s ${sockfile} ip table add 2
-    sudo ${vppctl_binary} -s ${sockfile} set interface ip table eth1 2
-    sudo ${vppctl_binary} -s ${sockfile} app ns add id nginx secret 1234 sw_if_index 1
-    sudo ${vppctl_binary} -s ${sockfile} app ns add id proxy secret 1234 sw_if_index 2
-    sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 2 via lookup in table 1
-    sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 1 via lookup in table 2
 }
 
 DIR=$(cd "$(dirname "$0")";pwd)
@@ -117,7 +106,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [[ ${LOOPBACK} && ${PHY_IFACE} ]]; then
-    echo "Don't support set both -l and -p at the same time!!"
+    echo "Don't support both -l and -p at the same time!!"
     help_func
     exit 1
 fi
@@ -129,7 +118,7 @@ if ! [[ ${LOOPBACK} || ${PHY_IFACE} ]]; then
 fi
 
 if [[ ${PHY_IFACE} && ! ${NIC_name} ]]; then
-    echo "error: \"-p\" need two physical NIC interface names: [inputNIC,outputNIC]"
+    echo "error: \"-p\" need two physical NIC interface names: [serverNIC,clientNIC]"
     help_func
     exit 1
 fi
@@ -166,7 +155,7 @@ fi
 echo "Found VPP binary at: $(command -v ${vpp_binary})"
 echo "Found VPPCTL binary at: $(command -v ${vppctl_binary})"
 
-source setup.sh
+source ${DIR}/setup.sh
 sockfile="/run/vpp/cli-master.sock"
  
 sudo ${vpp_binary} unix { cli-listen ${sockfile} }                   \

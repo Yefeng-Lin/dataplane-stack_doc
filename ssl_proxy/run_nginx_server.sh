@@ -8,15 +8,14 @@
 
 help_func()
 {
-    echo "Usage: ./run_server.sh OPTS [ARGS]"
+    echo "Usage: ./run_nginx_server.sh OPTS [ARGS]"
     echo "where  OPTS := -l ssl proxy test via loopback interface"
     echo "            := -p ssl proxy test via physical NIC"
-    echo "            := -c set cpu affinity of iperf3 server"
+    echo "            := -c set cpu affinity of nginx https server, example: -c 2"
     echo "            := -h help"
-    echo "       ARGS := \"-c\" need cpu isolation core number, example: -c 2"
     echo "Example:"
-    echo "  ./run_server.sh -l -c 2"
-    echo "  ./run_server.sh -p -c 2"
+    echo "  ./run_nginx_server.sh -l -c 2"
+    echo "  ./run_nginx_server.sh -p -c 2"
     echo
 }
 
@@ -52,12 +51,9 @@ while [ $# -gt 0 ]; do
           ;;
     esac
 done
-if [ ${PHY_IFACE} ]; then
-    source ${DIR}/setup.sh -p
-fi
 
 if [[ ${LOOPBACK} && ${PHY_IFACE} ]]; then
-      echo "Don't support set both -l and -p at the same time!!"
+      echo "Don't support both -l and -p at the same time!!"
       help_func
       exit 1
 fi
@@ -91,18 +87,18 @@ fi
 echo "Found VPP's library at: $(ls ${LDP_PATH})"
 
 if [ ${PHY_IFACE} ]; then
-    source ${DIR}/setup.sh -p
+    source ${DIR}/setup.sh -k
 fi
 
-VCL_SERVER_CONF=vcl_nginx_proxy.conf
+VCL_SERVER_CONF=vcl_nginx_server.conf
 NGINX_SERVER_CONF=nginx_server.conf
 
 echo "=========="
 echo "Starting Serevr"
 if [ -n "$LOOPBACK" ]; then
-    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_SERVER_CONF} nginx -c /etc/nginx/${NGINX_SERVER_CONF}"
+    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_SERVER_CONF} nginx -c ${DIR}/${NGINX_SERVER_CONF}"
 fi
 if [ -n "$PHY_IFACE" ]; then
-    sudo taskset -c ${CORELIST} sh -c "nginx -c /etc/nginx/${NGINX_SERVER_CONF}"
+    sudo taskset -c ${CORELIST} sh -c "nginx -c ${DIR}/${NGINX_SERVER_CONF}"
 fi
 echo "Done!!"

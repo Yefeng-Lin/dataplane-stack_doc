@@ -11,12 +11,11 @@ help_func()
     echo "Usage: ./run_wrk.sh OPTS [ARGS]"
     echo "where  OPTS := -l ssl proxy test via loopback interface"
     echo "            := -p ssl proxy test via physical NIC"
-    echo "            := -c isolate cpu core"
+    echo "            := -c isolate cpu core, example: -c 4"
     echo "            := -h help"
-    echo "       ARGS := \"-c\" need cpu isolation core index"
     echo "Example:"
-    echo "  ./run_server.sh -l -c 4"
-    echo "  ./run_server.sh -p -c 4"
+    echo "  ./run_wrk.sh -l -c 4"
+    echo "  ./run_wrk.sh -p -c 4"
     echo
 }
  
@@ -54,7 +53,7 @@ while [ $# -gt 0 ]; do
 done
  
 if [[ ${LOOPBACK} && ${PHY_IFACE} ]]; then
-      echo "Don't support set both -l and -p at the same time!!"
+      echo "Don't support both -l and -p at the same time!!"
       help_func
       exit 1
 fi
@@ -93,11 +92,11 @@ echo "Starting wrk2 test..."
 
 VCL_WRK_CONF=vcl_wrk2.conf
 if [ -n "$LOOPBACK" ]; then
-    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ../../../wrk2-aarch64/wrk --rate 100000000 -t 1 -c 30 -d 2s https://172.16.2.1:8089/1kb"
+    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DIR}/../../components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
 fi
 
 if [ -n "$PHY_IFACE" ]; then
-    sudo taskset -c ${CORELIST} sh -c "${DIR}/../../wrk2-aarch64/wrk --rate 100000000 -t 1 -c 30 -d 2s https://172.16.2.1:8089/1kb"
+    sudo taskset -c ${CORELIST} sh -c "${DIR}/../../components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
 fi
 
 echo "Done!!"

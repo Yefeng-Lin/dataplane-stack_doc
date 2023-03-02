@@ -9,16 +9,16 @@ help_func()
     echo
     echo "Usage: ./setup.sh OPTS"
     echo "where  OPTS := -k setup nginx server via physical NIC"
-    echo "               other cases, do not set option"
+    echo "               other cases, do not set this option"
     echo "            := -h help"
     echo "Example:"
-    echo "  ./run_dut.sh"
-    echo "  ./run_dut.sh -k"
+    echo "  ./setup.sh"
+    echo "  ./setup.sh -k"
     echo
 }
 
 DIR=$(cd "$(dirname "$0")";pwd)
-wrk_dir=${DIR}/../../wrk2-aarch64
+wrk_binary=${DIR}/../../wrk2-aarch64/wrk
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -37,19 +37,29 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ ! -d ${wrk_dir} ]; then
-    cd ${DIR}/../../
-    git clone https://github.com/AmpereTravis/wrk2-aarch64.git
-    cd wrk2-aarch64
-    git am ${DIR}/../../patches/ssl_proxy/0001-Modify-max-number-of-file-descriptors-tracked-to-run.patch
-    make all
+if ! [ $(command -v $wrk_binary) ]; then
+      cd ${DIR}/../../components
+      git clone https://github.com/AmpereTravis/wrk2-aarch64.git
+      cd wrk2-aarch64
+      git am ${DIR}/../../patches/wrk2/0001-wrk2-fd-vpp.patch
+      make all > /dev/null 2>&1
 fi
 
-echo "Creating ssl private keys and cerfificatesi..."
+if [ $(command -v $wrk_binary) ]; then
+    echo "wrk2 build succeeded."
+fi
+
 sudo mkdir -p /etc/nginx/certs
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
+if ! [[ -e /etc/nginx/certs/server.key && -e /etc/nginx/certs/server.crt ]]; then
+        echo "Creating ssl server's private keys and cerfificatesi..."
+        sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
+fi
+
 if ! [ ${PHY_IFACE} ]; then
-      sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/proxy.key -out /etc/nginx/certs/proxy.crt
+      if ! [[ -e /etc/nginx/certs/proxy.key && -e /etc/nginx/certs/proxy.crt ]]; then
+              echo "Creating ssl proxy's private keys and cerfificatesi..."
+              sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/proxy.key -out /etc/nginx/certs/proxy.crt
+      fi
 fi
 
 echo "$(ls /etc/nginx/certs/server.key)"
@@ -61,8 +71,10 @@ fi
 
 sudo mkdir -p /var/www/html
 
-echo "Creating loads"
-echo "...1kb"
-sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
+if ! [ -e /var/www/html/1kb ]; then
+      echo "Creating 1kb load file"
+      sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
+      echo "$(ls /var/www/html/1kb)"
+fi
 echo
 echo "Setup completed!"

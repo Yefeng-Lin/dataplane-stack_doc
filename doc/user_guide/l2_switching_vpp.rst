@@ -11,20 +11,25 @@ VPP L2 Switching
 Introduction
 ************
 
-VPP L2 Switching implements the typical switching function based on 48-bit MAC
-address. It forwards packets based on the l2fib table. Below L2 features are supported:
+VPP L2 Switching implements the typical 48-bit destination MAC addresss based packet
+forwarding function. Packet forwarding information is stored in the l2fib table.
+Below L2 features are supported:
 
 - Forwarding
 - MAC Learning
 - Flooding
 
-The l2fib table starts out empty. Table entry can be manually configured as a static entry.
-VPP switch can also dynamically populate its l2fib table by looking at the source MAC
-address of incoming frames
-on each interface.
+The l2fib table starts out empty. VPP switch can dynamically populate its l2fib
+table entries in the case of l2fib table lookup miss with incoming frame's source
+MAC address on each interface, which is the MAC learning process. Table entry can
+also be manually inserted and configured as a static entry. After the MAC learning
+procress, VPP switch uses frame's destination MAC address to lookup the l2fib table.
+If lookup hit, frames are forwarded out through the egress interface per results
+from l2fib table. If lookup missed, all interfaces within the same bridge domain
+with the input interface will send a copy of the frame, which is the flooding process.
 
-This guide explains in detail on how to use the VPP based L2 Switching using either MEMIF or RDMA interfaces.
-Other interfaces supported by VPP (e.g. DPDK or VETH) should follow a similar setup,
+This guide explains in detail on how to use the VPP based L2 switching using either memif or rmda interfaces.
+Other interfaces supported by VPP (e.g. dpdk or veth) should follow a similar setup,
 but are not covered in this guide. Users can execute bundled scripts in dataplane-stack
 repo to quickly establish the L2 switching cases or manually run the use cases by
 following detailed guidelines step by step. 
@@ -44,19 +49,20 @@ To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run:
         export vppctl_binary="vppctl"
 
 ****************
-MEMIF Connection
+Memif Connection
 ****************
 
-MEMIF, a.k.a., shared memory interface, is software emulated ethernet interface,
-which provides high performance packet transmit and receive between VPP instances
-and VPP with other user applications.
+Shared memory packet interface (memif) is software emulated ethernet interface,
+which provides high performance packet transmit and receive between VPP and use
+application or multiple VPP instances.
 
-In this setup, two pairs of memif interfaces are configured to connect L2 Switching engine and the VPP based traffic generator.
+In this setup, two pairs of memif interfaces are configured to connect VPP L2 switch
+instance and VPP based traffic generator.
 
 .. figure:: ../images/l2_switching_memif.png
    :align: center
    :width: 400
-                                memif connection
+   memif connection
 
 .. note::
         This setup requires at least two isolated cores for VPP workers. Cores 2 and 4
@@ -82,7 +88,7 @@ Examine VPP switch memif interfaces rx/tx counters after several seconds:
 
         ./usecase/l2_switching/traffic_monitor.sh
 
-Here is a sample output::
+Here is a sample output:
 
 .. code-block:: none
 
@@ -107,40 +113,46 @@ Users can also setup DUT and test L2 switching case step by step.
 VPP Switch Setup
 ~~~~~~~~~~~~~~~~
 
-Declare a variable to hold the VPP cli socket for VPP switch:
+Declare a variable to hold the cli socket for VPP switch:
 
 .. code-block:: shell
 
         export sockfile_sw="/run/vpp/cli_switch.sock"
 
-Run a VPP instance as L2 switch:
+Run a VPP instance as L2 switch on cores 1 & 2:
 
 .. code-block:: shell
 
         sudo ${vpp_binary} unix {cli-listen ${sockfile_sw}} cpu {main-core 1 corelist-workers 2}
 
 
-Create MEMIF interfaces and associate interfaces with a bridge domain::
+Create memif interfaces and associate interfaces with a bridge domain:
 
-        sudo ${vppctl_binary} -s ${sockfile} create memif socket id 1 filename /tmp/memif-dut-1
-        sudo ${vppctl_binary} -s ${sockfile} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
-        sudo ${vppctl_binary} -s ${sockfile} create memif socket id 2 filename /tmp/memif-dut-2
-        sudo ${vppctl_binary} -s ${sockfile} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
-        sudo ${vppctl_binary} -s ${sockfile} set interface mac address memif1/1 02:fe:a4:26:ca:f2
-        sudo ${vppctl_binary} -s ${sockfile} set interface mac address memif2/1 02:fe:51:75:42:42
-        sudo ${vppctl_binary} -s ${sockfile} set int state memif1/1 up
-        sudo ${vppctl_binary} -s ${sockfile} set int state memif2/1 up
-        sudo ${vppctl_binary} -s ${sockfile} set interface l2 bridge memif1/1 10
-        sudo ${vppctl_binary} -s ${sockfile} set interface l2 bridge memif2/1 10
+.. code-block:: shell
 
-Configure a l2fib table entry with MAC address 00:00:0A:81:0:2::
+        sudo ${vppctl_binary} -s ${sockfile_sw} create memif socket id 1 filename /tmp/memif-dut-1
+        sudo ${vppctl_binary} -s ${sockfile_sw} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
+        sudo ${vppctl_binary} -s ${sockfile_sw} create memif socket id 2 filename /tmp/memif-dut-2
+        sudo ${vppctl_binary} -s ${sockfile_sw} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface mac address memif1/1 02:fe:a4:26:ca:f2
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface mac address memif2/1 02:fe:51:75:42:42
+        sudo ${vppctl_binary} -s ${sockfile_sw} set int state memif1/1 up
+        sudo ${vppctl_binary} -s ${sockfile_sw} set int state memif2/1 up
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge memif1/1 10
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge memif2/1 10
 
-        sudo ${vppctl_binary} -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 memif2/1 static
+Add a static entry with MAC address 00:00:0a:81:00:02 and interface memif2/1 to l2fib table:
+
+.. code-block:: shell
+
+        sudo ${vppctl_binary} -s ${sockfile_sw} l2fib add 00:00:0a:81:00:02 10 memif2/1 static
 
 To display the entries of the l2fib table, use the command ``show l2fib all``.
-Here is a sample output for the static l2fib entry added previously::
+Here is a sample output for the static l2fib entry added previously:
 
-        sudo ${vppctl_binary} -s ${sockfile} show l2fib all
+.. code-block:: none
+
+        sudo ${vppctl_binary} -s ${sockfile_sw} show l2fib all
             Mac-Address     BD-Idx If-Idx BSN-ISN Age(min) static filter bvi         Interface-Name
         00:00:0a:81:00:02    1      2      0/0      no      *      -     -             memif2/1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
@@ -151,20 +163,26 @@ For more detailed usage of VPP commands used above, refer to following links,
 - `VPP set interface state reference`_
 - `VPP set interface l2 bridge reference`_
 
-To explore more on VPP's accepted commands, please review `VPP cli reference`_.
+To explore more on VPP's available commands, please review `VPP cli reference`_.
 
 Test
 ~~~~
 
-Declare a variable to hold the VPP cli listen socket specified in above step::
+Declare a variable to hold the cli socket for VPP traffic generator:
+
+.. code-block:: shell
 
         export sockfile_tg="/run/vpp/cli_tg.sock"
 
-Run a VPP instance as software traffic generator::
+Run another VPP instance as software traffic generator on cores 3 & 4:
 
-        sudo ${vpp_binary}  unix {cli-listen ${sockfile_tg}} cpu {main-core 3 corelist-workers 4}
+.. code-block:: shell
 
-Create memif interfaces and traffic generator with packet destination MAC address of ``00:00:0a:81:00:02``::
+        sudo ${vpp_binary} unix {cli-listen ${sockfile_tg}} cpu {main-core 3 corelist-workers 4}
+
+Create memif interfaces and traffic flow with destination MAC address of ``00:00:0a:81:00:02``:
+
+.. code-block:: shell
 
         sudo ${vppctl_binary} -s ${sockfile_tg} create memif socket id 1 filename /tmp/memif-dut-1
         sudo ${vppctl_binary} -s ${sockfile_tg} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 slave
@@ -175,32 +193,45 @@ Create memif interfaces and traffic generator with packet destination MAC addres
         sudo ${vppctl_binary} -s ${sockfile_tg} set int state memif1/1 up
         sudo ${vppctl_binary} -s ${sockfile_tg} set int state memif2/1 up
         sudo ${vppctl_binary} -s ${sockfile_tg} packet-generator new {        \
-                                                name pg0                  \
+                                                name tg0                  \
                                                 limit -1                  \
                                                 size 64-64                \
                                                 node memif1/1-output      \
                                                 tx-interface memif1/1     \
                                                 data {                    \
-                                                IP4: 00:00:0A:81:0:1 -> 00:00:0A:81:0:2  \
+                                                IP4: 00:00:0a:81:00:01 -> 00:00:0a:81:00:02  \
                                                 UDP: 192.81.0.1 -> 192.81.0.2  \
                                                 UDP: 1234 -> 2345         \
                                                 incrementing 8            \
                                                 }                         \
                                             }
 
-Start to send the traffic to VPP switch instance over memif1/1::
+Start to send the traffic to VPP switch instance over memif1/1:
 
-        sudo ${vppctl_binary} -s ${sockfile_tg} packet-generator enable-stream pg0
+.. code-block:: shell
+
+        sudo ${vppctl_binary} -s ${sockfile_tg} packet-generator enable-stream tg0
 
 Then VPP switch instance will forward those packets out on interface memif2/2.
-After several seconds, run below command to check memif interfaces rx/tx counters on VPP switch instance::
+After several seconds, run below command to check memif interfaces rx/tx counters on VPP switch instance:
 
-        sudo ${vppctl_binary} -s ${sockfile} show interface
+.. code-block:: none 
+
+        sudo ${vppctl_binary} -s ${sockfile_sw} show interface
+          Name          Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+        local0           0     down          0/0/0/0
+        memif1/1         1      up          9000/0/0/0         rx packets       35205632
+                                                               rx bytes       2253160448
+        memif2/1         2      up          9000/0/0/0         tx packets       35205632
+                                                               tx bytes       2253160448
+
 
 Stop
 ~~~~
 
-Kill VPP::
+Kill VPP instances::
+
+.. code-block:: shell
 
         sudo pkill -9 vpp
 
@@ -208,43 +239,62 @@ Kill VPP::
 RDMA Ethernet Connection
 ************************
 
-This section will create this setup:
+In this L2 switching scenario, DUT and traffic generator run on separated hardware
+platforms and are connected with ethernet adaptors and cables. The traffic generator
+could be software-based , e.g., VPP/TRex/TrafficGen running on regular servers, or
+hardware platforms, e.g., IXIA/Spirent Smartbits.
 
 .. figure:: ../images/l2_switching_rdma.png
    :align: center
    :width: 400
+   ethernet connection 
 
 Find out which DUT interfaces are connected with traffic generator.
 ``sudo ethtool --identify <interface>`` will typically blink a light on the NIC to help identify the
 physical port associated with the interface.
 
-Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command::
+Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command:
+
+.. code-block:: shell
 
         sudo lshw -c net -businfo
+
+.. code-block:: none
+
         Bus info          Device      Class      Description
         ====================================================
         pci@0000:07:00.0  eth0        network    RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
-Script Running
-==============
+Automated Execution
+===================
 
-On DUT run scripts in dataplane-stack repo to setup DUT and run VPP switch instance::
+Quickly setup VPP switch on DUT:
+
+.. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/l2_switching/run_dut.sh -p enp1s0f0np0,enp1s0f0np1 -c 1,2
+        ./usecase/l2_switching/run_dut.sh -p enP1p1s0f0,enP1p1s0f1 -c 1,2
+
+.. note::
+        Use interface names on DUT to replace sample names in above example.
 
 Configure traffic generator to send packets to DUT input interface with a destination MAC address
 of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out on output interface.
+In the above example, enP1p1s0f0 is the input interface, and enP1p1s0f1 is the output interface.
 
-Examine VPP switch RDMA ethernet interfaces rx/tx counters after several seconds::
+Examine VPP switch RDMA ethernet interfaces rx/tx counters after several seconds:
+
+.. code-block:: shell
 
         ./usecase/l2_switching/traffic_monitor.sh
 
-Here is a sample output::
+Here is a sample output:
 
-        sudo ${vppctl_binary} -s ${sockfile} show interface
+.. code-block:: none
+
+        sudo ${vppctl_binary} -s ${sockfile_sw} show interface
 
           Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
          local0               0     down          0/0/0/0
@@ -253,44 +303,56 @@ Here is a sample output::
          eth1                 2      up          9000/0/0/0     tx packets              25261056
                                                                 tx bytes             37891584000
 
-Stop case::
+Stop VPP switch:
+
+.. code-block:: shell
 
         ./usecase/l2_switching/stop.sh
 
-CLI Running
-===========
+Manual Execution
+================
 
 DUT Setup
 ~~~~~~~~~
 
-Run a VPP instance as L2 switch::
+Declare a variable to hold the cli socket for VPP switch:
 
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 corelist-workers 2}
+.. code-block:: shell
 
-Declare a variable to hold the VPP cli listen socket specified in above step::
+        export sockfile_sw="/run/vpp/cli_sw.sock"
 
-        export sockfile="/run/vpp/cli.sock"
+Run a VPP instance as L2 switch:
+
+.. code-block:: shell
+
+        sudo ${vpp_binary} unix {cli-listen ${sockfile_sw}} cpu {main-core 1 corelist-workers 2}
 
 .. note::
         Use interface names on DUT to replace sample names in following commands.
 
-Create two RDMA ethernet interfaces and associate them with a bridge domain::
+Create two rdma ethernet interfaces and associate them with a bridge domain:
 
-        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
-        sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
-        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f1 name eth1
-        sudo ${vppctl_binary} -s ${sockfile} set interface state eth1 up
-        sudo ${vppctl_binary} -s ${sockfile} set interface l2 bridge eth0 10
-        sudo ${vppctl_binary} -s ${sockfile} set interface l2 bridge eth1 10
+.. code-block:: shell
 
-Configure a l2fib table entry with MAC address 00:00:0A:81:0:2::
+        sudo ${vppctl_binary} -s ${sockfile_sw} create interface rdma host-if enP1p1s0f0 name eth0
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface state eth0 up
+        sudo ${vppctl_binary} -s ${sockfile_sw} create interface rdma host-if enP1p1s0f1 name eth1
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface state eth1 up
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge eth0 10
+        sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge eth1 10
 
-        sudo ${vppctl_binary} -s ${sockfile} l2fib add 00:00:0A:81:0:2 10 eth1 static
+Add a static entry with MAC address 00:00:0a:81:00:02 and interface eth1 to l2fib table:
+
+.. code-block:: shell
+
+        sudo ${vppctl_binary} -s ${sockfile_sw} l2fib add 00:00:0a:81:00:02 10 eth1 static
 
 To display the entries of the l2fib table, use the command ``show l2fib all``.
-Here is a sample output for the static l2fib entry added previously::
+Here is a sample output for the static l2fib entry added previously:
 
-        sudo ${vppctl_binary} -s ${sockfile} show l2fib all
+.. code-block:: none
+
+        sudo ${vppctl_binary} -s ${sockfile_sw} show l2fib all
             Mac-Address     BD-Idx If-Idx BSN-ISN Age(min) static filter bvi         Interface-Name
          00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
@@ -303,16 +365,19 @@ Test
 ~~~~
 
 Configure traffic generator to send packets to VPP input interface ``eth0``,
-which is ``enp1s0f0np0`` on DUT, with a destination MAC address of ``00:00:0a:81:00:02``,
-then VPP switch will forward those packets out on VPP interface ``eth1``, which is ``enp1s0f0np1`` on DUT.
+which is ``enP1p1s0f0`` on DUT, with a destination MAC address of ``00:00:0a:81:00:02``,
+then VPP switch will forward those packets out on VPP interface ``eth1``, which is ``enP1p1s0f1`` on DUT.
 
-Use the command ``show interface`` to display interface tx/rx counters. The output
-will be similar to the previous script running section.
+Use the command ``sudo ${vppctl_binary} -s ${sockfile_sw} show interface`` to
+display VPP switch interfaces rx/tx counters. The output will be similar to the
+previous automated execution section.
 
 Stop
 ~~~~
 
-Kill VPP::
+Kill VPP switch:
+
+.. code-block:: shell
 
         sudo pkill -9 vpp
 

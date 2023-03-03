@@ -19,9 +19,16 @@ help_func()
     echo
 }
  
-DIR=$(cd "$(dirname "$0")";pwd)
- 
-while [ $# -gt 0 ]; do
+export DIR=$(cd "$(dirname "$0")";pwd)
+export DATAPLANE_TOP=${DIR}/../..
+. "${DATAPLANE_TOP}"/tools/check-path.sh
+
+args="$@"
+options=(-o "hlp:c:")
+opts=$(getopt ${options[@]} -- $args)
+eval set -- "$opts"
+
+while true; do
     case "$1" in
       --help | -h)
           help_func
@@ -44,7 +51,10 @@ while [ $# -gt 0 ]; do
           export CORELIST="$2"
           shift 2
           ;;
- 
+      --)
+	  shift
+          break
+          ;;
       *)
           echo "Invalid Option!!"
           exit 1
@@ -69,34 +79,19 @@ if ! [ ${CORELIST} ]; then
       help_func
       exit 1
 fi
-DIR=$(cd "$(dirname "$0")";pwd)
 
-if ! [ ${LDP_PATH} ]; then
-    echo "User don't specify the library path"
-    echo "Try to find the proper paths..."
-    LDP_PATH=$(ls ${DIR}/../../components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so)
-    LDP_PATH=${LDP_PATH:-"/usr/lib/libvcl_ldpreload.so"}
-else
-    echo "Validate user-specified paths..."
-fi
-
-if ! [ -e ${LDP_PATH} ]; then
-    echo "Can't find VPP's library"
-    exit 1
-fi
-
-echo "Found VPP's library at: $(ls ${LDP_PATH})"
+check_ldp
 
 echo "=========="
 echo "Starting wrk2 test..."
 
 VCL_WRK_CONF=vcl_wrk2.conf
 if [ -n "$LOOPBACK" ]; then
-    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DIR}/../../components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
+    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
 fi
 
 if [ -n "$PHY_IFACE" ]; then
-    sudo taskset -c ${CORELIST} sh -c "${DIR}/../../components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
+    sudo taskset -c ${CORELIST} sh -c "${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
 fi
 
 echo "Done!!"

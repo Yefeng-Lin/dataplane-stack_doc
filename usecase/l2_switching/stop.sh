@@ -4,6 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
+#kill vpp
+echo "Stop traffic and release switch & traffic_generator instances..."
 sudo pkill -9 vpp
-sudo pkill -9 nginx

@@ -15,11 +15,11 @@ help_func()
     echo "               one NIC connected to wrk2 client and another NIC connected to nginx server"
     echo "               example: -p serverNIC,clientNIC"
     echo "               using \"lshw -c net -businfo\" get interface names"
-    echo "            := -c assign VPP main thread to a cpu isolation core, example: -c 1"
+    echo "            := -c assign VPP main thread to a CPU core, example: -c 1"
     echo "            := -h help"
     echo "Example:"
     echo "  ./run_dut.sh -l -c 1"
-    echo "  ./run_dut.sh -p enp1s0f0np0,enp1s0f0np1 -c 1"
+    echo "  ./run_dut.sh -p enP1p1s0f0,enP1p1s0f0 -c 1"
     echo
 }
 
@@ -61,9 +61,16 @@ btw_network()
     sudo ${vppctl_binary} -s ${sockfile} set interface state eth1 up
 }
 
-DIR=$(cd "$(dirname "$0")";pwd)
+export DIR=$(cd "$(dirname "$0")";pwd)
+export DATAPLANE_TOP=${DIR}/../..
+. "${DATAPLANE_TOP}"/tools/check-path.sh
 
-while [ $# -gt 0 ]; do
+args="$@"
+options=(-o "hmp:c:")
+opts=$(getopt ${options[@]} -- $args)
+eval set -- "$opts"
+
+while true; do
     case "$1" in
       --help | -h)
           help_func
@@ -98,6 +105,10 @@ while [ $# -gt 0 ]; do
 	  export MAINCORE="$2"
 	  shift 2
 	  ;;
+      --)
+          shift
+	  break
+	  ;;
       *)
 	  echo "Invalid Option!!"
 	  exit 1
@@ -124,39 +135,16 @@ if [[ ${PHY_IFACE} && ! ${NIC_name} ]]; then
 fi
 
 if ! [ ${MAINCORE} ]; then
-    echo "error: \"-c\" option must be set"
+    echo "error: \"-c\" option bad usage"
     help_func
     exit 1
 fi
 
-if ! [[ $(command -v $vpp_binary) && $(command -v $vppctl_binary) ]]; then
-    echo "User don't specify the VPP or VPPCTL binary paths"
-    echo "Try to find the proper paths..."
-    vpp_binary=$(command -v "${DIR}/../../components/vpp/build-root/install-vpp-native/vpp/bin/vpp")
-    vppctl_binary=$(command -v "${DIR}/../../components/vpp/build-root/install-vpp-native/vpp/bin/vppctl")
-    vpp_binary=${vpp_binary:-vpp}
-    vppctl_binary=${vppctl_binary:-vppctl}
-else
-    echo "Validate user-specified paths..."
-fi
-
-if ! [ $(command -v $vpp_binary) ]; then
-    echo
-    echo "Can't find vpp!!"
-    exit 1
-fi
-
-if ! [ $(command -v $vppctl_binary) ]; then
-    echo
-    echo "Can't find vppctl!!"
-    exit 1
-fi
-
-echo "Found VPP binary at: $(command -v ${vpp_binary})"
-echo "Found VPPCTL binary at: $(command -v ${vppctl_binary})"
+check_vpp
+check_vppctl
 
 source ${DIR}/setup.sh
-sockfile="/run/vpp/cli-master.sock"
+sockfile="/run/vpp/cli.sock"
  
 sudo ${vpp_binary} unix { cli-listen ${sockfile} }                   \
                   cpu { main-core ${MAINCORE} workers 0 } \

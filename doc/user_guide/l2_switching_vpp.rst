@@ -226,7 +226,6 @@ After several seconds, run below command to check memif interfaces rx/tx counter
         memif2/1         2      up          9000/0/0/0         tx packets       35205632
                                                                tx bytes       2253160448
 
-
 Stop
 ~~~~
 
@@ -237,24 +236,24 @@ Kill VPP instances::
         sudo pkill -9 vpp
 
 ************************
-RDMA Ethernet Connection
+DPDK Ethernet Connection
 ************************
 
 In this L2 switching scenario, DUT and traffic generator run on separated hardware
 platforms and are connected with ethernet adaptors and cables. The traffic generator
-could be software-based , e.g., VPP/TRex/TrafficGen running on regular servers, or
+could be software-based, e.g., VPP/TRex/TrafficGen running on regular servers, or
 hardware platforms, e.g., IXIA/Spirent Smartbits.
 
-.. figure:: ../images/l2_switching_rdma.png
+.. figure:: ../images/l2_switching_dpdk.png
    :align: center
    :width: 400
    ethernet connection 
 
 Find out which DUT interfaces are connected with traffic generator.
-``sudo ethtool --identify <interface>`` will typically blink a light on the NIC to help identify the
+``sudo ethtool --identify <interface_name>`` will typically blink a light on the NIC to help identify the
 physical port associated with the interface.
 
-Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command:
+Get interface names and PCIe addresses from ``lshw`` command:
 
 .. code-block:: shell
 
@@ -268,6 +267,9 @@ Get interface names ``enP1p1s0f0`` and ``enP1p1s0f1`` from ``lshw`` command:
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
+In this setup example, enP1p1s0f0 at PCIe address 0001:01:00.0 is the input interface,
+and enP1p1s0f1 at PCIe address 0001:01:00.1 is the output interface.
+
 Automated Execution
 ===================
 
@@ -276,14 +278,13 @@ Quickly setup VPP switch on DUT:
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/l2_switching/run_dut.sh -p enP1p1s0f0,enP1p1s0f1 -c 1,2
+        ./usecase/l2_switching/run_dut.sh -p 0001:01:00.0,0001:01:00.1 -c 1,2
 
 .. note::
-        Use interface names on DUT to replace sample names in above example.
+        Use interface PCIe addresses on DUT to replace sample addresses in above example.
 
 Configure traffic generator to send packets to DUT input interface with a destination MAC address
 of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out on output interface.
-In the above example, enP1p1s0f0 is the input interface, and enP1p1s0f1 is the output interface.
 
 Examine VPP switch RDMA ethernet interfaces rx/tx counters after several seconds:
 

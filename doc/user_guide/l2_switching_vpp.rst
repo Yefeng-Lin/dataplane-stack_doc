@@ -28,20 +28,21 @@ If lookup hit, frames are forwarded out through the egress interface per results
 from l2fib table. If lookup missed, all interfaces within the same bridge domain
 with the input interface will send a copy of the frame, which is the flooding process.
 
-This guide explains in detail on how to use the VPP based L2 switching using either memif or rmda interfaces.
-Other interfaces supported by VPP (e.g. dpdk or veth) should follow a similar setup,
+This guide explains in detail on how to use the VPP based L2 switching using either memif or dpdk interfaces.
+Other interfaces supported by VPP (e.g. veth) should follow a similar setup,
 but are not covered in this guide. Users can execute bundled scripts in dataplane-stack
 repo to quickly establish the L2 switching cases or manually run the use cases by
 following detailed guidelines step by step. 
 
-First, ensure the proper VPP binary path. To use VPP built in dataplane-stack, run:
+First, ensure the proper VPP binaries path. To use VPP in dataplane-stack project
+build system directory, run:
 
 .. code-block:: shell
 
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
 
-To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run:
+To use package intsalled VPP (e.g. ``apt``, ``buildroot``) available in system ``PATH``, run:
 
 .. code-block:: shell
 

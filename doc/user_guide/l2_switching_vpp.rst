@@ -109,7 +109,7 @@ Stop VPP:
 Manual Execution
 ================
 
-Users can also setup DUT and test L2 switching case step by step.
+Users can also setup VPP switch/traffic generator and test L2 switching case step by step.
 
 VPP Switch Setup
 ~~~~~~~~~~~~~~~~
@@ -267,13 +267,13 @@ Get interface names and PCIe addresses from ``lshw`` command:
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
-In this setup example, enP1p1s0f0 at PCIe address 0001:01:00.0 is the input interface,
-and enP1p1s0f1 at PCIe address 0001:01:00.1 is the output interface.
+In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is the input interface,
+and ``enP1p1s0f1`` at PCIe address ``0001:01:00.1`` is the output interface.
 
 Automated Execution
 ===================
 
-Quickly setup VPP switch on DUT:
+Quickly setup VPP switch with interface PCIe addresses on specified cores:
 
 .. code-block:: shell
 
@@ -286,7 +286,7 @@ Quickly setup VPP switch on DUT:
 Configure traffic generator to send packets to DUT input interface with a destination MAC address
 of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out on output interface.
 
-Examine VPP switch RDMA ethernet interfaces rx/tx counters after several seconds:
+Examine VPP switch dpdk interfaces rx/tx counters after several seconds:
 
 .. code-block:: shell
 
@@ -305,6 +305,10 @@ Here is a sample output:
          eth1                 2      up          9000/0/0/0     tx packets              25261056
                                                                 tx bytes             37891584000
 
+.. note::
+        eth0 in VPP switch is the alias name of NIC interface at PCIe address 0001:01:00.0.
+        eth1 in VPP switch is the alias name of NIC interface at PCIe address 0001:01:00.1.
+
 Stop VPP switch:
 
 .. code-block:: shell
@@ -314,8 +318,10 @@ Stop VPP switch:
 Manual Execution
 ================
 
-DUT Setup
-~~~~~~~~~
+Users can also setup VPP switch and test L2 switching case step by step.
+
+VPP Switch Setup
+~~~~~~~~~~~~~~~~
 
 Declare a variable to hold the cli socket for VPP switch:
 
@@ -323,22 +329,20 @@ Declare a variable to hold the cli socket for VPP switch:
 
         export sockfile_sw="/run/vpp/cli_sw.sock"
 
-Run a VPP instance as L2 switch:
+Run a VPP instance as L2 switch with interface PCIe addresses on cores 1 & 2:
 
 .. code-block:: shell
 
-        sudo ${vpp_binary} unix {cli-listen ${sockfile_sw}} cpu {main-core 1 corelist-workers 2}
+        sudo ${vpp_binary} unix {cli-listen ${sockfile_sw}} cpu {main-core 1 corelist-workers 2} dpdk {dev 0000:01:00.0 {name eth0} dev 0000:01:00.1 {name eth1}}
 
 .. note::
-        Use interface names on DUT to replace sample names in following commands.
+        Use interface PCIe addresses on DUT to replace sample addresses in above command.
 
-Create two rdma ethernet interfaces and associate them with a bridge domain:
+Bring two ethernet interfaces in VPP swtich up and associate them with a bridge domain:
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile_sw} create interface rdma host-if enP1p1s0f0 name eth0
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface state eth0 up
-        sudo ${vppctl_binary} -s ${sockfile_sw} create interface rdma host-if enP1p1s0f1 name eth1
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface state eth1 up
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge eth0 10
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge eth1 10
@@ -359,7 +363,7 @@ Here is a sample output for the static l2fib entry added previously:
          00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
 
-For more detailed usage of VPP rdma command used above, refer to following link,
+For more detailed usage of VPP dpdk command used above, refer to following link,
 
 - `VPP rdma cli reference`_
 

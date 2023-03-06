@@ -63,6 +63,7 @@ instance and VPP based traffic generator.
 .. figure:: ../images/l2_switching_memif.png
    :align: center
    :width: 400
+
    Memif connection
 
 .. note::
@@ -118,7 +119,7 @@ Declare a variable to hold the cli socket for VPP switch:
 
 .. code-block:: shell
 
-        export sockfile_sw="/run/vpp/cli_switch.sock"
+        export sockfile_sw="/run/vpp/cli_sw.sock"
 
 Run a VPP instance as L2 switch on cores 1 & 2:
 
@@ -247,6 +248,7 @@ hardware platforms, e.g., IXIA/Spirent Smartbits.
 .. figure:: ../images/l2_switching_dpdk.png
    :align: center
    :width: 400
+
    Ethernet connection
 
 Find out which DUT interfaces are connected with traffic generator.

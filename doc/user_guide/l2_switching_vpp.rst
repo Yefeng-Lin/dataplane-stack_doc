@@ -77,11 +77,11 @@ Quickly setup VPP switch/traffic generator and test L2 switching use case:
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/l2_switching/run_dut.sh -m -c 1,2
-        ./usecase/l2_switching/run_tg.sh -c 3,4
+        ./usecase/l2_switching/run_vpp_sw.sh -m -c 1,2
+        ./usecase/l2_switching/run_vpp_tg.sh -c 3,4
 
 .. note::
-        Run ``./usecase/l2_switching/run_dut.sh --help`` for all supported options.
+        Run ``./usecase/l2_switching/run_vpp_sw.sh --help`` for all supported options.
 
 Examine VPP switch memif interfaces rx/tx counters after several seconds:
 
@@ -131,9 +131,9 @@ Create memif interfaces and associate interfaces with a bridge domain:
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile_sw} create memif socket id 1 filename /tmp/memif-dut-1
+        sudo ${vppctl_binary} -s ${sockfile_sw} create memif socket id 1 filename /tmp/memif_dut_1
         sudo ${vppctl_binary} -s ${sockfile_sw} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 master
-        sudo ${vppctl_binary} -s ${sockfile_sw} create memif socket id 2 filename /tmp/memif-dut-2
+        sudo ${vppctl_binary} -s ${sockfile_sw} create memif socket id 2 filename /tmp/memif_dut_2
         sudo ${vppctl_binary} -s ${sockfile_sw} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 master
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface mac address memif1/1 02:fe:a4:26:ca:f2
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface mac address memif2/1 02:fe:51:75:42:42
@@ -185,9 +185,9 @@ Create memif interfaces and traffic flow with destination MAC address of ``00:00
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile_tg} create memif socket id 1 filename /tmp/memif-dut-1
+        sudo ${vppctl_binary} -s ${sockfile_tg} create memif socket id 1 filename /tmp/memif_dut_1
         sudo ${vppctl_binary} -s ${sockfile_tg} create int memif id 1 socket-id 1 rx-queues 1 tx-queues 1 slave
-        sudo ${vppctl_binary} -s ${sockfile_tg} create memif socket id 2 filename /tmp/memif-dut-2
+        sudo ${vppctl_binary} -s ${sockfile_tg} create memif socket id 2 filename /tmp/memif_dut_2
         sudo ${vppctl_binary} -s ${sockfile_tg} create int memif id 1 socket-id 2 rx-queues 1 tx-queues 1 slave
         sudo ${vppctl_binary} -s ${sockfile_tg} set interface mac address memif1/1 02:fe:a4:26:ca:ac
         sudo ${vppctl_binary} -s ${sockfile_tg} set interface mac address memif2/1 02:fe:51:75:42:ed
@@ -273,18 +273,19 @@ and ``enP1p1s0f1`` at PCIe address ``0001:01:00.1`` is the output interface.
 Automated Execution
 ===================
 
-Quickly setup VPP switch with interface PCIe addresses on specified cores:
+Quickly setup VPP switch with input/output interface PCIe addresses on specified cores:
 
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/l2_switching/run_dut.sh -p 0001:01:00.0,0001:01:00.1 -c 1,2
+        ./usecase/l2_switching/run_vpp_sw.sh -p 0001:01:00.0,0001:01:00.1 -c 1,2
 
 .. note::
         Use interface PCIe addresses on DUT to replace sample addresses in above example.
 
-Configure traffic generator to send packets to DUT input interface with a destination MAC address
-of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out on output interface.
+Configure traffic generator to send packets to VPP input interface at PCIe address
+``0001:01:00.0`` with a destination MAC address of ``00:00:0a:81:00:02``, then VPP
+switch will forward those packets out on output interface at PCIe address ``0001:01:00.1``.
 
 Examine VPP switch dpdk interfaces rx/tx counters after several seconds:
 
@@ -306,8 +307,8 @@ Here is a sample output:
                                                                 tx bytes             37891584000
 
 .. note::
-        eth0 in VPP switch is the alias name of NIC interface at PCIe address 0001:01:00.0.
-        eth1 in VPP switch is the alias name of NIC interface at PCIe address 0001:01:00.1.
+        VPP eth0 is the alias name of NIC interface at PCIe address 0001:01:00.0.
+        VPP eth1 is the alias name of NIC interface at PCIe address 0001:01:00.1.
 
 Stop VPP switch:
 
@@ -329,7 +330,7 @@ Declare a variable to hold the cli socket for VPP switch:
 
         export sockfile_sw="/run/vpp/cli_sw.sock"
 
-Run a VPP instance as L2 switch with interface PCIe addresses on cores 1 & 2:
+Run a VPP instance as L2 switch with input/output interface PCIe addresses on cores 1 & 2:
 
 .. code-block:: shell
 
@@ -363,16 +364,16 @@ Here is a sample output for the static l2fib entry added previously:
          00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
 
-For more detailed usage of VPP dpdk command used above, refer to following link,
+For more detailed usage of VPP dpdk section used above, refer to following link,
 
-- `VPP rdma cli reference`_
+- `VPP configuration dpdk section reference`_
 
 Test
 ~~~~
 
-Configure traffic generator to send packets to VPP input interface ``eth0``,
-which is ``enP1p1s0f0`` on DUT, with a destination MAC address of ``00:00:0a:81:00:02``,
-then VPP switch will forward those packets out on VPP interface ``eth1``, which is ``enP1p1s0f1`` on DUT.
+Configure traffic generator to send packets to VPP input interface ``eth0`` at
+PCIe address ``0001:01:00.0`` with a destination MAC address of ``00:00:0a:81:00:02``,
+then VPP switch will forward those packets out on VPP output interface ``eth1`` at PCIe address ``0001:01:00.1``.
 
 Use the command ``sudo ${vppctl_binary} -s ${sockfile_sw} show interface`` to
 display VPP switch interfaces rx/tx counters. The output will be similar to the
@@ -392,8 +393,8 @@ Resources
 *********
 
 #. `VPP configuration reference <https://s3-docs.fd.io/vpp/22.02/configuration/reference.html>`_
-#. `VPP rdma cli reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_plugins_rdma.html>`_
 #. `VPP memif interface reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_plugins_memif.html>`_
 #. `VPP set interface state reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
 #. `VPP set interface l2 bridge reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_l2.html#set-interface-l2-bridge>`_
+#. `VPP configuration dpdk section reference <https://s3-docs.fd.io/vpp/22.02/configuration/reference.html#the-dpdk-section>`_
 #. `VPP cli reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/index.html>`_

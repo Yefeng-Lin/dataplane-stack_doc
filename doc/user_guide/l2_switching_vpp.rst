@@ -63,7 +63,7 @@ instance and VPP based traffic generator.
 .. figure:: ../images/l2_switching_memif.png
    :align: center
    :width: 400
-   memif connection
+   Memif connection
 
 .. note::
         This setup requires at least two isolated cores for VPP workers. Cores 2 and 4
@@ -247,7 +247,7 @@ hardware platforms, e.g., IXIA/Spirent Smartbits.
 .. figure:: ../images/l2_switching_dpdk.png
    :align: center
    :width: 400
-   ethernet connection 
+   Ethernet connection
 
 Find out which DUT interfaces are connected with traffic generator.
 ``sudo ethtool --identify <interface_name>`` will typically blink a light on the NIC to help identify the

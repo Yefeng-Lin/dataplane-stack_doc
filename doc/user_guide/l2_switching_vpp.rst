@@ -19,14 +19,15 @@ Below L2 features are supported:
 - MAC Learning
 - Flooding
 
-The l2fib table starts out empty. VPP switch can dynamically populate its l2fib
-table entries in the case of l2fib table lookup miss with incoming frame's source
-MAC address on each interface, which is the MAC learning process. Table entry can
-also be manually inserted and configured as a static entry. After the MAC learning
-procress, VPP switch uses frame's destination MAC address to lookup the l2fib table.
-If lookup hit, frames are forwarded out through the egress interface per results
-from l2fib table. If lookup missed, all interfaces within the same bridge domain
-with the input interface will send a copy of the frame, which is the flooding process.
+The l2fib table starts out empty. Static table entries can be added manually.
+Additionally, the VPP switch can dynamically learn table entries while it switches frames.
+
+When the VPP switch receives a frame, it will first record the source MAC and input
+interface into the l2fib. This is how VPP performs MAC learning. Next, VPP will
+determine which interface(s) to transmit the frame out on. VPP will look up the
+egress interface in the l2fib using the frame's destination MAC address. If there
+is no entry matching the destination MAC address in the l2fib, then VPP will flood
+the frame out every interface connected on the same bridge domain.
 
 This guide explains in detail on how to use the VPP based L2 switching using either
 memif or dpdk interfaces. Other interfaces supported by VPP (e.g. veth) should
@@ -54,7 +55,7 @@ Memif Connection
 ****************
 
 Shared memory packet interface (memif) is software emulated ethernet interface,
-which provides high performance packet transmit and receive between VPP and use
+which provides high performance packet transmit and receive between VPP and user
 application or multiple VPP instances.
 
 In this setup, two pairs of memif interfaces are configured to connect VPP L2 switch
@@ -143,18 +144,17 @@ Create memif interfaces and associate interfaces with a bridge domain:
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge memif1/1 10
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge memif2/1 10
 
-Add a static entry with MAC address 00:00:0a:81:00:02 and interface memif2/1 to l2fib table:
+Add a static entry with MAC address ``00:00:0a:81:00:02`` and interface memif2/1 to l2fib table:
 
 .. code-block:: shell
 
         sudo ${vppctl_binary} -s ${sockfile_sw} l2fib add 00:00:0a:81:00:02 10 memif2/1 static
 
-To display the entries of the l2fib table, use the command ``show l2fib all``.
+To display the entries of the l2fib table, use the command ``sudo ${vppctl_binary} -s ${sockfile_sw} show l2fib all``.
 Here is a sample output for the static l2fib entry added previously:
 
 .. code-block:: none
 
-        sudo ${vppctl_binary} -s ${sockfile_sw} show l2fib all
             Mac-Address     BD-Idx If-Idx BSN-ISN Age(min) static filter bvi         Interface-Name
         00:00:0a:81:00:02    1      2      0/0      no      *      -     -             memif2/1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
@@ -215,17 +215,16 @@ Start to send the traffic to VPP switch instance over memif1/1:
         sudo ${vppctl_binary} -s ${sockfile_tg} packet-generator enable-stream tg0
 
 Then VPP switch instance will forward those packets out on interface memif2/2.
-After several seconds, run below command to check memif interfaces rx/tx counters on VPP switch instance:
+After several seconds, use the command ``sudo ${vppctl_binary} -s ${sockfile_sw} show interface``
+to display VPP switch interfaces rx/tx counters. Here is a sample output:
 
-.. code-block:: none 
+.. code-block:: none
 
-        sudo ${vppctl_binary} -s ${sockfile_sw} show interface
           Name          Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
         local0           0     down          0/0/0/0
         memif1/1         1      up          9000/0/0/0         rx packets       35205632
                                                                rx bytes       2253160448
         memif2/1         2      up          9000/0/0/0         tx packets       35205632
-                                                               tx bytes       2253160448
 
 Stop
 ~~~~
@@ -299,8 +298,6 @@ Here is a sample output:
 
 .. code-block:: none
 
-        sudo ${vppctl_binary} -s ${sockfile_sw} show interface
-
           Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
          local0               0     down          0/0/0/0
          eth0                 1      up          9000/0/0/0     rx packets              25261056
@@ -309,8 +306,8 @@ Here is a sample output:
                                                                 tx bytes             37891584000
 
 .. note::
-        VPP eth0 is the alias name of NIC interface at PCIe address 0001:01:00.0.
-        VPP eth1 is the alias name of NIC interface at PCIe address 0001:01:00.1.
+        VPP eth0 is the aliased name of the NIC interface at PCIe address ``0001:01:00.0``.
+        VPP eth1 is the aliased name of the NIC interface at PCIe address ``0001:01:00.1``.
 
 Stop VPP switch:
 
@@ -332,14 +329,14 @@ Declare a variable to hold the cli socket for VPP switch:
 
         export sockfile_sw="/run/vpp/cli_sw.sock"
 
-Run a VPP instance as L2 switch with input/output interface PCIe addresses on cores 1 & 2:
+Run a VPP instance as L2 switch on cores 1 & 2 with input/output interface's PCIe addresses:
 
 .. code-block:: shell
 
         sudo ${vpp_binary} unix {cli-listen ${sockfile_sw}} cpu {main-core 1 corelist-workers 2} dpdk {dev 0000:01:00.0 {name eth0} dev 0000:01:00.1 {name eth1}}
 
 .. note::
-        Use interface PCIe addresses on DUT to replace sample addresses in above command.
+        Replace sample addresses in above command with desired PCIe addresses on DUT.
 
 Bring two ethernet interfaces in VPP swtich up and associate them with a bridge domain:
 
@@ -350,18 +347,17 @@ Bring two ethernet interfaces in VPP swtich up and associate them with a bridge 
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge eth0 10
         sudo ${vppctl_binary} -s ${sockfile_sw} set interface l2 bridge eth1 10
 
-Add a static entry with MAC address 00:00:0a:81:00:02 and interface eth1 to l2fib table:
+Add a static entry with MAC address ``00:00:0a:81:00:02`` and interface eth1 to l2fib table:
 
 .. code-block:: shell
 
         sudo ${vppctl_binary} -s ${sockfile_sw} l2fib add 00:00:0a:81:00:02 10 eth1 static
 
-To display the entries of the l2fib table, use the command ``show l2fib all``.
+To display the entries of the l2fib table, use the command ``sudo ${vppctl_binary} -s ${sockfile_sw} show l2fib all``.
 Here is a sample output for the static l2fib entry added previously:
 
 .. code-block:: none
 
-        sudo ${vppctl_binary} -s ${sockfile_sw} show l2fib all
             Mac-Address     BD-Idx If-Idx BSN-ISN Age(min) static filter bvi         Interface-Name
          00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
@@ -378,8 +374,16 @@ PCIe address ``0001:01:00.0`` with a destination MAC address of ``00:00:0a:81:00
 then VPP switch will forward those packets out on VPP output interface ``eth1`` at PCIe address ``0001:01:00.1``.
 
 Use the command ``sudo ${vppctl_binary} -s ${sockfile_sw} show interface`` to
-display VPP switch interfaces rx/tx counters. The output will be similar to the
-previous automated execution section.
+display VPP switch interfaces rx/tx counters. Here is a sample output:
+
+.. code-block:: none
+
+          Name               Idx    State  MTU (L3/IP4/IP6/MPLS)     Counter          Count
+         local0               0     down          0/0/0/0
+         eth0                 1      up          9000/0/0/0     rx packets              25261056
+                                                                rx bytes             37891584000
+         eth1                 2      up          9000/0/0/0     tx packets              25261056
+                                                                tx bytes             37891584000
 
 Stop
 ~~~~
@@ -394,9 +398,9 @@ Kill VPP switch:
 Resources
 *********
 
-#. `VPP configuration reference <https://s3-docs.fd.io/vpp/22.02/configuration/reference.html>`_
-#. `VPP memif interface reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_plugins_memif.html>`_
-#. `VPP set interface state reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
-#. `VPP set interface l2 bridge reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_l2.html#set-interface-l2-bridge>`_
-#. `VPP configuration dpdk section reference <https://s3-docs.fd.io/vpp/22.02/configuration/reference.html#the-dpdk-section>`_
-#. `VPP cli reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/index.html>`_
+#. `VPP configuration reference <https://s3-docs.fd.io/vpp/23.02/configuration/reference.html>`_
+#. `VPP memif interface reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_plugins_memif.html>`_
+#. `VPP set interface state reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
+#. `VPP set interface l2 bridge reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_l2.html#set-interface-l2-bridge>`_
+#. `VPP configuration dpdk section reference <https://s3-docs.fd.io/vpp/23.02/configuration/reference.html#the-dpdk-section>`_
+#. `VPP cli reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/index.html>`_

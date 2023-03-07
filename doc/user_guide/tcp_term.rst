@@ -24,14 +24,18 @@ intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP. Users can utilize scripts in dataplane-stack repo to run cases
 quickly, or use detailed command lines in this guide to run cases step by step.
 
-First, ensure the proper VPP binary and library path. To use VPP built
-in dataplane-stack repo, run::
+First, ensure the proper VPP binaries path. To use VPP in dataplane-stack project
+build system directory, run:
+
+.. code-block:: shell
 
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
         export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
 
-To use package intsalled VPP (e.g. ``apt``, ``buildroot``), run::
+To use package installed VPP (e.g. ``apt``, ``buildroot``) available in system ``PATH``, run:
+
+.. code-block:: shell
 
         export vpp_binary="vpp"
         export vppctl_binary="vppctl"
@@ -49,10 +53,18 @@ Network Stack Layers
 
    Linux kernel stack VS VPP's host stack.
 
+VPP's host stack provides alternatives to kernel-based sockets so that applications
+can take full advantage of VPP's high performance. It implements a clean slate TCP
+that supports vectorized packet processing and follows VPP’s highly scalable threading
+model. The implementation is RFC compliant, supports a high number of high-speed TCP
+protocol features. VPP's host stack also provides a transport pluggable session layer
+that abstracts the interaction between applications and transports using a custom-built
+shared memory infrastructure.
+
 This guide demonstrates two kinds of iperf3 connection:
 
 - Loopback connection on one DUT
-- RDMA ethernet connection between DUT and client
+- Dpdk ethernet connection between DUT and client
 
 *******************
 Loopback Connection
@@ -62,20 +74,30 @@ Loopback Connection
    :align: center
    :width: 300
 
-Script Running
-==============
+    Loopback connection
 
-Users can run scripts in dataplane-stack repo to setup DUT and test tcp termination case quickly::
+.. note::
+        This setup requires three isolated cores. Cores 1-3 are assumed to be
+        isolated in this guide.
+
+Automated Execution
+===================
+
+Quickly setup VPP & iperf3 and test tcp termination use case:
+
+.. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/tcp_term/run_dut.sh -l -c 1
+        ./usecase/tcp_term/run_vpp_hs.sh -l -c 1
         ./usecase/tcp_term/run_iperf3_server.sh -l -c 2
         ./usecase/tcp_term/run_iperf3_client.sh -c 3
 
 .. note::
-        Run ``./usecase/tcp_term/run_dut.sh --help`` for all supported options.
+        Run ``./usecase/tcp_term/run_vpp_hs.sh --help`` for all supported options.
 
-If the case runs successfully, the measurement results will be printed::
+If the case runs successfully, the measurement results will be printed:
+
+.. code-block:: none
 
         Connecting to host 172.16.1.1, port 5201
         [ 33] local 172.16.2.1 port 43757 connected to 172.16.1.1 port 5201
@@ -99,26 +121,35 @@ If the case runs successfully, the measurement results will be printed::
         VPP's host stack doesn't support tcp socket option ``TCP_INFO`` to get tcp
         connection information, so ``Retr`` and ``Cwnd`` columns in above output are meaningless.
 
-Stop case::
+Stop:
+
+.. code-block:: shell
 
         ./usecase/tcp_term/stop.sh
 
-CLI Running
-===========
+Manual Execution
+================
 
-Users can also use command lines to setup DUT and test tcp termination case step
-by step.
+Users can also setup VPP & iperf3 and test tcp termination case step by step.
 
-DUT Setup
+VPP Setup
 ~~~~~~~~~
 
-Start VPP as a daemon with config parameters and define a variable with the VPP cli socket.
-For more argument parameters, refer to `VPP configuration reference`_::
+Declare a variable to hold the cli socket for VPP:
 
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+.. code-block:: shell
         export sockfile="/run/vpp/cli.sock"
 
-Create loopback interfaces and routes by following VPP commands::
+Start VPP as a daemon on core 1 with session enabled. For more argument parameters,
+refer to `VPP configuration reference`_:
+
+.. code-block:: shell
+
+        sudo ${vpp_binary} unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+
+Create loopback interfaces and routes by following VPP commands:
+
+.. code-block:: shell
 
         sudo ${vppctl_binary} -s ${sockfile} create loopback interface
         sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
@@ -130,8 +161,8 @@ Create loopback interfaces and routes by following VPP commands::
         sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop1 2
         sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop0 172.16.1.1/24
         sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop1 172.16.2.1/24
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id foo secret 1234 sw_if_index 1
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id bar secret 5678 sw_if_index 2
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id server secret 1234 sw_if_index 1
+        sudo ${vppctl_binary} -s ${sockfile} app ns add id client secret 5678 sw_if_index 2
         sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
         sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
 
@@ -139,114 +170,141 @@ For more detailed usage on above commands, refer to following links,
 
 - `VPP set interface ip address reference`_
 - `VPP set interface state reference`_
+- `VPP app ns reference`_
 - `VPP ip route reference`_
 
 Create two vcl configuration files for iperf3 instances.
 
-- For server instance ``vcl_iperf3_server_lb.conf``::
+- For server instance ``vcl_iperf3_server_lb.conf``:
+
+.. code-block:: none
 
         vcl {
           rx-fifo-size 4000000
           tx-fifo-size 4000000
-          namespace-id foo
+          namespace-id server
           namespace-secret 1234
           app-scope-global
-          app-socket-api /var/run/vpp/app_ns_sockets/foo
+          app-socket-api /var/run/vpp/app_ns_sockets/server
         }
 
-- For client instance ``vcl_iperf3_client.conf``::
+- For client instance ``vcl_iperf3_client.conf``:
+
+.. code-block:: none
 
         vcl {
           rx-fifo-size 4000000
           tx-fifo-size 4000000
-          namespace-id bar
+          namespace-id client
           namespace-secret 5678
           app-scope-global
-          app-socket-api /var/run/vpp/app_ns_sockets/bar
+          app-socket-api /var/run/vpp/app_ns_sockets/client
         }
 
 The above configure vcl to request 4MB receive and transmit fifo sizes and
 access to global session scope. Additionally, they provide the path to session
 layer's different app namespace socket for iperf3 client and server instances.
+For more vcl parameters usage, refer to `VPP vcl reference`_.
 
 Test
 ~~~~
 
-Start the iperf3 server over VPP's host stack as a daemon::
+Start the iperf3 server over VPP's host stack as a daemon:
+
+.. code-block:: shell
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server_lb.conf iperf3 -4 -s -D"
 
-To examine the iperf3 server session in VPP, use the command ``show session verbose``.
-Here is a sample output for iperf3 server session::
+To examine the iperf3 server session in VPP, use the command ``sudo ${vppctl_binary} -s ${sockfile} show session verbose``.
+Here is a sample output for iperf3 server session:
 
-        sudo ${vppctl_binary} -s ${sockfile} show session verbose
+.. code-block:: none
+
         Connection                                                  State          Rx-f      Tx-f
         [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1
 
-Start the iperf3 client over VPP's host stack to connect to iperf3 server::
+Start the iperf3 client over VPP's host stack to connect to iperf3 server:
+
+.. code-block:: shell
 
         sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
 
 If both iperf3 client and server run successfully, iperf3 client will output
 similar results as in the script running section.
 
-For more detailed iperf3 usage, refer to following link,
-
-- `iperf3 usage reference`_
+For more detailed iperf3 usage, refer to `iperf3 usage reference`_
 
 Stop
 ~~~~
 
-Kill VPP::
+Kill VPP:
+
+.. code-block:: shell
 
         $ sudo pkill -9 vpp
 
-Kill iperf3 server::
+Kill iperf3 server:
+
+.. code-block:: shell
 
         $ sudo pkill -9 iperf3
 
 ************************
-RDMA Ethernet Connection
+DPDK Ethernet Connection
 ************************
 
-This section assumes the following setup:
+In this tcp termination scenario, iperf3 server and client run on separated hardware
+platforms and are connected with ethernet adaptors and cables. Iperf3 server runs over
+VPP's host stack on DUT, and iperf3 client runs over Linux kernel stack on client node.
 
 .. figure:: ../images/tcp-term-nic.png
-        :align: center
-        :width: 400
+   :align: center
+   :width: 400
 
-As shown, the DUT should have at least one NIC connected to the client machine.
-The DUT run iperf3 in server mode and the client machine run iperf3 in client mode.
+    Ethernet connection
 
-Find out which DUT interface is connected with client machine.
+Find out which DUT interface is connected with client node.
 ``sudo ethtool --identify <interface_name>`` will typically blink a light on the
 NIC to help identify the physical port associated with the interface.
 
-Get interface name ``enP1p1s0f0`` from ``lshw`` command::
+Get interface name and PCIe address from ``lshw`` command:
+
+.. code-block:: shell
 
         sudo lshw -c net -businfo
+
+.. code-block:: none
+
         Bus info          Device      Class      Description
         ====================================================
         pci@0000:07:00.0  eth0        network    RTL8111/8168/8411 PCI Express Gigabit Ethernet Controller
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
-Script Running
-==============
+In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is used to
+connect DUT and client node..
 
-On DUT run scripts in dataplane-stack repo to setup DUT and start iperf3 server over
-VPP's host stack::
+Automated Execution
+===================
+
+Quickly setup VPP and iperf3 server on specified cores:
+
+.. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/tcp_term/run_dut.sh -p enP1p1s0f0 -c 1
+        ./usecase/tcp_term/run_dut.sh -p 0001:01:00.0 -c 1
         ./usecase/tcp_term/run_iperf3_server.sh -p -c 2
 
-On client machine start the iperf3 client to connect to DUT iperf3 server::
+On client node start the iperf3 client to connect to DUT iperf3 server:
+
+.. code-block:: shell
 
         sudo taskset -c 1 iperf3 -c 1.1.1.2
 
-If both iperf3 client and server run successfully, the measurement results will be printed by iperf3 client::
+If both iperf3 client and server run successfully, the measurement results will be printed by iperf3 client:
+
+.. code-block:: none
 
         Connecting to host 1.1.1.2, port 5201
         [  5] local 1.1.1.1 port 59118 connected to 1.1.1.2 port 5201
@@ -268,31 +326,43 @@ If both iperf3 client and server run successfully, the measurement results will 
 
 Stop case::
 
+.. code-block:: shell
+
         ./usecase/tcp_term/stop.sh
 
-CLI Running
-===========
+Manual Execution
+================
 
-DUT Setup
+VPP Setup
 ~~~~~~~~~
-Start VPP as a daemon with config parameters and define a variable with the vpp cli socket::
 
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+Declare a variable to hold the cli socket for VPP:
+
+.. code-block:: shell
         export sockfile="/run/vpp/cli.sock"
 
-Create rdma ethernet interface and set ip address::
+Start VPP as a daemon on core 1 with interface PCIe address and session enabled:
 
-        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
+.. code-block:: shell
+
+        sudo ${vpp_binary} unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} dpdk {dev 0000:01:00.0 {name eth0}} session {enable use-app-socket-api}
+
+Bring VPP ethernet interface up and set ip address:
+
+.. code-block:: shell
+
         sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
         sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
 
-Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_pn.conf``::
+Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_pn.conf``:
+
+.. code-block:: none
 
         vcl {
-             rx-fifo-size 4000000
-             tx-fifo-size 4000000
-             app-scope-global
-             app-socket-api /var/run/vpp/app_ns_sockets/default
+          rx-fifo-size 4000000
+          tx-fifo-size 4000000
+          app-scope-global
+          app-socket-api /var/run/vpp/app_ns_sockets/default
         }
 
 The above configures vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
@@ -341,9 +411,11 @@ Below is vpp example config::
 Resources
 *********
 
-#. `VPP configuration reference <https://s3-docs.fd.io/vpp/22.02/configuration/reference.html>`_
-#. `VPP set interface ip address reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_ip.html#set-interface-ip-address>`_
-#. `VPP set interface state reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
-#. `VPP ip route reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_ip.html#ip-route>`_
-#. `VPP cli reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/index.html>`_
+#. `VPP configuration reference <https://s3-docs.fd.io/vpp/23.02/configuration/reference.html>`_
+#. `VPP set interface ip address reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_ip.html#set-interface-ip-address>`_
+#. `VPP set interface state reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
+#. `VPP ip route reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_ip.html#ip-route>`_
+#. `VPP app ns reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_session.html#app-ns>`_
+#. `VPP cli reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/index.html>`_
+#. `VPP vcl reference <https://wiki.fd.io/view/VPP/HostStack/VCL>`_
 #. `iperf3 usage reference <https://software.es.net/iperf/invoking.html>`_

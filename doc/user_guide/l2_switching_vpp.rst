@@ -43,7 +43,7 @@ build system directory, run:
         export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
         export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
 
-To use package intsalled VPP (e.g. ``apt``, ``buildroot``) available in system ``PATH``, run:
+To use package installed VPP (e.g. ``apt``, ``buildroot``) available in system ``PATH``, run:
 
 .. code-block:: shell
 

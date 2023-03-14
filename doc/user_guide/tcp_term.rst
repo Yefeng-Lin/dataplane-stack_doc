@@ -263,7 +263,7 @@ DPDK Ethernet Connection
 ************************
 
 In this tcp termination scenario, iperf3 server and client run on separated hardware
-platforms and are connected with ethernet adaptors and cables. Iperf3 server runs over
+platforms and are connected with ethernet adaptors and cables. iperf3 server runs over
 VPP's host stack on DUT, and iperf3 client runs over Linux kernel stack on client node.
 
 .. figure:: ../images/tcp_term_dpdk.png
@@ -272,7 +272,7 @@ VPP's host stack on DUT, and iperf3 client runs over Linux kernel stack on clien
 
     Ethernet connection
 
-Find out which DUT interface is connected with client node.
+To find out which DUT interface is connected with client node,
 ``sudo ethtool --identify <interface_name>`` will typically blink a light on the
 NIC to help identify the physical port associated with the interface.
 
@@ -297,7 +297,7 @@ as 1.1.1.2/30. The IP address of client node is 1.1.1.1/30.
 Automated Execution
 ===================
 
-Quickly setup VPP and iperf3 server on specified cores:
+Quickly setup VPP and iperf3 server on DUT:
 
 .. code-block:: shell
 
@@ -344,6 +344,8 @@ Stop VPP and iperf3:
 
 Manual Execution
 ================
+
+Users can also setup VPP & iperf3 and test tcp termination case step by step.
 
 VPP Setup
 ~~~~~~~~~

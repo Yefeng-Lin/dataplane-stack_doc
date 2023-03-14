@@ -1,5 +1,5 @@
 ..
-  # Copyright (c) 2022, Arm Limited.
+  # Copyright (c) 2023, Arm Limited.
   #
   # SPDX-License-Identifier: Apache-2.0
 
@@ -16,13 +16,16 @@ session and application layer protocols. It leverages VPP’s graph based
 forwarding model and vectorized packet processing to ensure high throughput
 and scale transport protocol termination.
 
-iperf3 is a tool for active measurements of the maximum achievable bandwidth on IP networks.
+`iperf3`_ is a tool for active measurements of the maximum achievable bandwidth
+on IP networks. In this guide it is used to measure the maximum attainable goodput
+of the VPP's host stack on DUT node.
 
 This guide explains in detail on how to integrate iperf3 with VPP's host stack
 for tcp termination cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
-them into VPP. Users can utilize scripts in dataplane-stack repo to run cases
-quickly, or use detailed command lines in this guide to run cases step by step.
+them into VPP. Users can execute bundled scripts in dataplane-stack repo to quickly
+establish the tcp termination cases or manually run the use cases by following
+detailed guidelines step by step.
 
 First, ensure the proper VPP binaries path. To use VPP in dataplane-stack project
 build system directory, run:
@@ -63,16 +66,20 @@ shared memory infrastructure.
 
 This guide demonstrates two kinds of iperf3 connection:
 
-- Loopback connection on one DUT
-- Dpdk ethernet connection between DUT and client
+- Loopback connection on DUT node
+- DPDK ethernet connection between DUT and client nodes
 
 *******************
 Loopback Connection
 *******************
 
-.. figure:: ../images/iperf3-loopback.png
+The loopback interface is a software virtual interface that is always up and available
+after it has been configured. In this setup, both iperf3 server and client run over VPP's
+host stack on DUT and communicate with each other through VPP loopback interfaces.
+
+.. figure:: ../images/tcp_term_loop.png
    :align: center
-   :width: 300
+   :width: 400
 
     Loopback connection
 
@@ -121,7 +128,7 @@ If the case runs successfully, the measurement results will be printed:
         VPP's host stack doesn't support tcp socket option ``TCP_INFO`` to get tcp
         connection information, so ``Retr`` and ``Cwnd`` columns in above output are meaningless.
 
-Stop:
+Stop VPP and iperf3:
 
 .. code-block:: shell
 
@@ -138,9 +145,10 @@ VPP Setup
 Declare a variable to hold the cli socket for VPP:
 
 .. code-block:: shell
+
         export sockfile="/run/vpp/cli.sock"
 
-Start VPP as a daemon on core 1 with session enabled. For more argument parameters,
+Start VPP as a daemon on core 1 with session enabled. For more configuration parameters,
 refer to `VPP configuration reference`_:
 
 .. code-block:: shell
@@ -258,7 +266,7 @@ In this tcp termination scenario, iperf3 server and client run on separated hard
 platforms and are connected with ethernet adaptors and cables. Iperf3 server runs over
 VPP's host stack on DUT, and iperf3 client runs over Linux kernel stack on client node.
 
-.. figure:: ../images/tcp-term-nic.png
+.. figure:: ../images/tcp_term_dpdk.png
    :align: center
    :width: 400
 
@@ -283,7 +291,8 @@ Get interface name and PCIe address from ``lshw`` command:
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
 In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is used to
-connect DUT and client node..
+connect with client node. The IP address of this NIC interface in VPP is configured
+as 1.1.1.2/30. The IP address of client node is 1.1.1.1/30.
 
 Automated Execution
 ===================
@@ -296,7 +305,10 @@ Quickly setup VPP and iperf3 server on specified cores:
         ./usecase/tcp_term/run_dut.sh -p 0001:01:00.0 -c 1
         ./usecase/tcp_term/run_iperf3_server.sh -p -c 2
 
-On client node start the iperf3 client to connect to DUT iperf3 server:
+.. note::
+        Use interface PCIe address on DUT to replace sample address in above example.
+
+On client node start the iperf3 client to connect to iperf3 server on DUT:
 
 .. code-block:: shell
 
@@ -324,7 +336,7 @@ If both iperf3 client and server run successfully, the measurement results will 
         [  5]   0.00-10.00  sec  18.5 GBytes  15.9 Gbits/sec  545             sender
         [  5]   0.00-10.00  sec  18.5 GBytes  15.9 Gbits/sec                  receiver
 
-Stop case::
+Stop VPP and iperf3:
 
 .. code-block:: shell
 
@@ -339,6 +351,7 @@ VPP Setup
 Declare a variable to hold the cli socket for VPP:
 
 .. code-block:: shell
+
         export sockfile="/run/vpp/cli.sock"
 
 Start VPP as a daemon on core 1 with interface PCIe address and session enabled:
@@ -351,8 +364,8 @@ Bring VPP ethernet interface up and set ip address:
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
         sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
+        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
 
 Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_pn.conf``:
 
@@ -365,16 +378,21 @@ Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_p
           app-socket-api /var/run/vpp/app_ns_sockets/default
         }
 
-The above configures vcl to request 4MB receive and transmit fifo sizes and access to global session scope.
+The above configures vcl to request 4MB receive and transmit fifo sizes and access
+to global session scope. For more vcl parameters usage, refer to `VPP vcl reference`_.
 
-Start the iperf3 server as a daemon over VPP's host stack::
+Start the iperf3 server on core 2 as a daemon over VPP's host stack:
+
+.. code-block:: shell
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server_pn.conf iperf3 -4 -s -D"
 
 Test
 ~~~~
 
-On client machine start the iperf3 client to connect to DUT iperf3 server::
+On client node run the iperf3 client to connect to the iperf3 server on DUT:
+
+.. code-block:: shell
 
         sudo taskset -c 1 iperf3 -c 1.1.1.2
 
@@ -384,20 +402,26 @@ similar results as in the script running section.
 Stop
 ~~~~
 
-Kill VPP::
+Kill VPP:
+
+.. code-block:: shell
 
         sudo pkill -9 vpp
 
-Kill iperf3 server::
+Kill iperf3 server:
+
+.. code-block:: shell
 
         sudo pkill -9 iperf3
 
-********************
-Tips for performance
-********************
+*********************
+Suggested Experiments
+*********************
 
-For jumbo packets, increase vpp tcp mtu and buffer size to improve the performance.
-Below is vpp example config::
+For jumbo packets, increase VPP tcp mtu and buffer size to improve the performance.
+Below is VPP example config:
+
+.. code-block:: none
 
         tcp {
             cc-algo cubic
@@ -418,4 +442,5 @@ Resources
 #. `VPP app ns reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_session.html#app-ns>`_
 #. `VPP cli reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/index.html>`_
 #. `VPP vcl reference <https://wiki.fd.io/view/VPP/HostStack/VCL>`_
+#. `iperf3 <https://github.com/esnet/iperf>`_
 #. `iperf3 usage reference <https://software.es.net/iperf/invoking.html>`_

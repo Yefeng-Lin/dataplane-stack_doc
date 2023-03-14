@@ -217,7 +217,7 @@ For more vcl parameters usage, refer to `VPP vcl reference`_.
 Test
 ~~~~
 
-Start the iperf3 server over VPP's host stack as a daemon:
+Start the iperf3 server on core 2 as a daemon over VPP's host stack:
 
 .. code-block:: shell
 
@@ -232,7 +232,7 @@ Here is a sample output for iperf3 server session:
         [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1
 
-Start the iperf3 client over VPP's host stack to connect to iperf3 server:
+Start the iperf3 client on core 3 over VPP's host stack to connect to iperf3 server:
 
 .. code-block:: shell
 

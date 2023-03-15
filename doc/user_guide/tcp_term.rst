@@ -27,26 +27,6 @@ them into VPP. Users can execute bundled scripts in dataplane-stack repo to quic
 establish the tcp termination cases or manually run the use cases by following
 detailed guidelines step by step.
 
-First, ensure the proper VPP binaries path. To use VPP in dataplane-stack project
-build system directory, run:
-
-.. code-block:: shell
-
-        export vpp_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vpp"
-        export vppctl_binary="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin/vppctl"
-        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
-
-To use package installed VPP (e.g. ``apt``, ``buildroot``) available in system ``PATH``, run:
-
-.. code-block:: shell
-
-        export vpp_binary="vpp"
-        export vppctl_binary="vppctl"
-        export LDP_PATH="/system_lib_path/libvcl_ldpreload.so"
-
-.. note::
-        The system lib path can be ``/usr/lib`` or ``/usr/lib/aarch64-linux-gnu``.
-
 ********************
 Network Stack Layers
 ********************
@@ -79,9 +59,9 @@ host stack on DUT and communicate with each other through VPP loopback interface
 
 .. figure:: ../images/tcp_term_loop.png
    :align: center
-   :width: 400
+   :width: 200
 
-    Loopback connection
+   Loopback connection
 
 .. note::
         This setup requires three isolated cores. Cores 1-3 are assumed to be
@@ -148,11 +128,12 @@ Declare a variable to hold the cli socket for VPP:
 
         export sockfile="/run/vpp/cli.sock"
 
-Run VPP as a daemon on core 1 with session enabled:
+Run VPP as a daemon on core 1 with session layer enabled:
 
 .. code-block:: shell
 
-        sudo ${vpp_binary} unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
 
 For more VPP configuration parameters, refer to `VPP configuration reference`_:
 
@@ -160,22 +141,22 @@ Create loopback interfaces and routes by following VPP commands:
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-        sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
-        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-        sudo ${vppctl_binary} -s ${sockfile} set interface state loop1 up
-        sudo ${vppctl_binary} -s ${sockfile} ip table add 1
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop0 1
-        sudo ${vppctl_binary} -s ${sockfile} ip table add 2
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop1 2
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop0 172.16.1.1/24
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop1 172.16.2.1/24
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id server secret 1234 sw_if_index 1
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id client secret 5678 sw_if_index 2
-        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
-        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
+        sudo ./vppctl -s ${sockfile} create loopback interface
+        sudo ./vppctl -s ${sockfile} set interface state loop0 up
+        sudo ./vppctl -s ${sockfile} create loopback interface
+        sudo ./vppctl -s ${sockfile} set interface state loop1 up
+        sudo ./vppctl -s ${sockfile} ip table add 1
+        sudo ./vppctl -s ${sockfile} set interface ip table loop0 1
+        sudo ./vppctl -s ${sockfile} ip table add 2
+        sudo ./vppctl -s ${sockfile} set interface ip table loop1 2
+        sudo ./vppctl -s ${sockfile} set interface ip address loop0 172.16.1.1/24
+        sudo ./vppctl -s ${sockfile} set interface ip address loop1 172.16.2.1/24
+        sudo ./vppctl -s ${sockfile} app ns add id server secret 1234 sw_if_index 1
+        sudo ./vppctl -s ${sockfile} app ns add id client secret 5678 sw_if_index 2
+        sudo ./vppctl -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
+        sudo ./vppctl -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
 
-For more detailed usage on above commands, refer to following links,
+For more detailed usage on above commands, refer to the following links,
 
 - `VPP set interface ip address reference`_
 - `VPP set interface state reference`_
@@ -218,13 +199,19 @@ For more vcl parameters usage, refer to `VPP vcl reference`_.
 Test
 ~~~~
 
+Declare a variable to hold the VPP library for ``LD_PRELOAD``:
+
+.. code-block:: shell
+
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
+
 Start the iperf3 server on core 2 as a daemon over VPP's host stack:
 
 .. code-block:: shell
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server_lb.conf iperf3 -4 -s -D"
 
-To examine the iperf3 server session in VPP, use the command ``sudo ${vppctl_binary} -s ${sockfile} show session verbose``.
+To examine the iperf3 server session in VPP, use the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
 Here is a sample output for iperf3 server session:
 
 .. code-block:: none
@@ -239,8 +226,32 @@ Start the iperf3 client on core 3 over VPP's host stack to connect to iperf3 ser
 
         sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
 
-If both iperf3 client and server run successfully, iperf3 client will output
-similar results as in the script running section.
+If both iperf3 client and server run successfully, measurement results will be
+printed by iperf3 client:
+
+.. code-block:: none
+
+        Connecting to host 172.16.1.1, port 5201
+        [ 33] local 172.16.2.1 port 43757 connected to 172.16.1.1 port 5201
+        [ ID] Interval           Transfer     Bitrate         Retr         Cwnd
+        [ 33]   0.00-1.00   sec  2.23 GBytes  19.2 Gbits/sec  65535        555 MBytes
+        [ 33]   1.00-2.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
+        [ 33]   2.00-3.00   sec  2.23 GBytes  19.1 Gbits/sec  65535        555 MBytes
+        [ 33]   3.00-4.00   sec  2.23 GBytes  19.2 Gbits/sec    0          555 MBytes
+        [ 33]   4.00-5.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
+        [ 33]   5.00-6.00   sec  2.23 GBytes  19.2 Gbits/sec  65535        555 MBytes
+        [ 33]   6.00-7.00   sec  2.23 GBytes  19.2 Gbits/sec  4294901761   0.00 Bytes
+        [ 33]   7.00-8.00   sec  2.23 GBytes  19.2 Gbits/sec  65535        555 MBytes
+        [ 33]   8.00-9.00   sec  2.23 GBytes  19.2 Gbits/sec    0          555 MBytes
+        [ 33]   9.00-10.00  sec  2.23 GBytes  19.2 Gbits/sec    0          -1874590816.00 Bytes
+        - - - - - - - - - - - - - - - - - - - - - - - - -
+        [ ID] Interval           Transfer     Bitrate         Retr
+        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec  65535             sender
+        [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
+
+.. note::
+        VPP's host stack doesn't support tcp socket option ``TCP_INFO`` to get tcp
+        connection information, so ``Retr`` and ``Cwnd`` columns in above output are meaningless.
 
 For more detailed iperf3 usage, refer to `iperf3 usage reference`_
 
@@ -271,7 +282,7 @@ VPP's host stack on DUT, and iperf3 client runs over Linux kernel stack on clien
    :align: center
    :width: 400
 
-    Ethernet connection
+   Ethernet connection
 
 To find out which DUT interface is connected with client node,
 ``sudo ethtool --identify <interface_name>`` will typically blink a light on the
@@ -283,6 +294,8 @@ Get interface name and PCIe address from ``lshw`` command:
 
         sudo lshw -c net -businfo
 
+The output will look similar to:
+
 .. code-block:: none
 
         Bus info          Device      Class      Description
@@ -293,7 +306,7 @@ Get interface name and PCIe address from ``lshw`` command:
 
 In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is used to
 connect with client node. The IP address of this NIC interface in VPP is configured
-as 1.1.1.2/30. The IP address of client node is 1.1.1.1/30.
+as 172.16.3.1/24. The IP address of client node is 172.16.3.2/24.
 
 Automated Execution
 ===================
@@ -303,24 +316,24 @@ Quickly setup VPP and iperf3 server on DUT:
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/tcp_term/run_dut.sh -p 0001:01:00.0 -c 1
+        ./usecase/tcp_term/run_vpp_hs.sh -p 0001:01:00.0 -c 1
         ./usecase/tcp_term/run_iperf3_server.sh -p -c 2
 
 .. note::
-        Use interface PCIe address on DUT to replace sample address in above example.
+        Replace sample address in above command with desired PCIe address on DUT.
 
 On client node start the iperf3 client to connect to iperf3 server on DUT:
 
 .. code-block:: shell
 
-        sudo taskset -c 1 iperf3 -c 1.1.1.2
+        sudo taskset -c 1 iperf3 -c 172.16.3.1
 
 If both iperf3 client and server run successfully, the measurement results will be printed by iperf3 client:
 
 .. code-block:: none
 
-        Connecting to host 1.1.1.2, port 5201
-        [  5] local 1.1.1.1 port 59118 connected to 1.1.1.2 port 5201
+        Connecting to host 172.16.3.1, port 5201
+        [  5] local 172.16.3.2 port 59118 connected to 172.16.3.1 port 5201
         [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
         [  5]   0.00-1.00   sec  1.85 GBytes  15.9 Gbits/sec  183   1.39 MBytes
         [  5]   1.00-2.00   sec  1.85 GBytes  15.9 Gbits/sec   44   1.37 MBytes
@@ -357,18 +370,22 @@ Declare a variable to hold the cli socket for VPP:
 
         export sockfile="/run/vpp/cli.sock"
 
-Start VPP as a daemon on core 1 with interface PCIe address and session enabled:
+Run VPP as a daemon on core 1 with interface PCIe address and session layer enabled:
 
 .. code-block:: shell
 
-        sudo ${vpp_binary} unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} dpdk {dev 0000:01:00.0 {name eth0}} session {enable use-app-socket-api}
+        cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} dpdk {dev 0000:01:00.0 {name eth0}} session {enable use-app-socket-api}
+
+.. note::
+        Replace sample address in above command with desired PCIe address on DUT.
 
 Bring VPP ethernet interface up and set ip address:
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 1.1.1.2/30
+        sudo ./vppctl -s ${sockfile} set interface state eth0 up
+        sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.3.1/24
 
 Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_pn.conf``:
 
@@ -384,11 +401,25 @@ Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_p
 The above configures vcl to request 4MB receive and transmit fifo sizes and access
 to global session scope. For more vcl parameters usage, refer to `VPP vcl reference`_.
 
+Declare a variable to hold the VPP library for ``LD_PRELOAD``:
+
+.. code-block:: shell
+
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
+
 Start the iperf3 server on core 2 as a daemon over VPP's host stack:
 
 .. code-block:: shell
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server_pn.conf iperf3 -4 -s -D"
+
+To examine the iperf3 server session in VPP, use the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
+Here is a sample output for iperf3 server session:
+
+.. code-block:: none
+
+        Connection                                                  State          Rx-f      Tx-f
+        [0:0][T] 0.0.0.0:5201->0.0.0.0:0                         LISTEN         0         0
 
 Test
 ~~~~
@@ -397,10 +428,30 @@ On client node run the iperf3 client to connect to the iperf3 server on DUT:
 
 .. code-block:: shell
 
-        sudo taskset -c 1 iperf3 -c 1.1.1.2
+        sudo taskset -c 1 iperf3 -c 172.16.3.1
 
-If both iperf3 client and server run successfully, iperf3 client will output
-similar results as in the script running section.
+If both iperf3 client and server run successfully, measurement results will be
+printed by iperf3 client:
+
+.. code-block:: none
+
+        Connecting to host 172.16.3.1, port 5201
+        [  5] local 172.16.3.2 port 59118 connected to 172.16.3.1 port 5201
+        [ ID] Interval           Transfer     Bitrate         Retr  Cwnd
+        [  5]   0.00-1.00   sec  1.85 GBytes  15.9 Gbits/sec  183   1.39 MBytes
+        [  5]   1.00-2.00   sec  1.85 GBytes  15.9 Gbits/sec   44   1.37 MBytes
+        [  5]   2.00-3.00   sec  1.85 GBytes  15.9 Gbits/sec   26   1.35 MBytes
+        [  5]   3.00-4.00   sec  1.85 GBytes  15.9 Gbits/sec   33   1.54 MBytes
+        [  5]   4.00-5.00   sec  1.85 GBytes  15.9 Gbits/sec   42   1.64 MBytes
+        [  5]   5.00-6.00   sec  1.84 GBytes  15.8 Gbits/sec  110   1.35 MBytes
+        [  5]   6.00-7.00   sec  1.85 GBytes  15.9 Gbits/sec   24   1.54 MBytes
+        [  5]   7.00-8.00   sec  1.84 GBytes  15.8 Gbits/sec   35   1.38 MBytes
+        [  5]   8.00-9.00   sec  1.85 GBytes  15.9 Gbits/sec   27   1.21 MBytes
+        [  5]   9.00-10.00  sec  1.85 GBytes  15.9 Gbits/sec   21   1.41 MBytes
+        - - - - - - - - - - - - - - - - - - - - - - - - -
+        [ ID] Interval           Transfer     Bitrate         Retr
+        [  5]   0.00-10.00  sec  18.5 GBytes  15.9 Gbits/sec  545             sender
+        [  5]   0.00-10.00  sec  18.5 GBytes  15.9 Gbits/sec                  receiver
 
 Stop
 ~~~~

@@ -3,9 +3,9 @@
   #
   # SPDX-License-Identifier: Apache-2.0
 
-#########
-SSL PROXY
-#########
+#################
+SSL REVERSE PROXY
+#################
 
 ************
 Introduction
@@ -26,9 +26,6 @@ intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP. Users can execute bundled scripts in dataplane-stack repo to quickly
 establish the ssl proxy cases or manually run the use cases by following detailed
 guidelines step by step.
-
-// FIXME
-       export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
 
 ********************
 Network Stack Layers
@@ -124,39 +121,39 @@ Declare a variable to hold the cli socket for VPP:
 
         export sockfile="/run/vpp/cli.sock"
 
-Start VPP as a daemon on core 1 with session enabled. For more configuration parameters,
+Run VPP as a daemon on core 1 with session enabled. For more configuration parameters,
 refer to `VPP configuration reference`_:
 
 .. code-block:: shell
 
-        sudo ${vpp_binary} unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
 
 Create loopback interfaces and routes by following VPP commands:
 
 .. code-block:: shell
 
-        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-        sudo ${vppctl_binary} -s ${sockfile} set interface state loop0 up
-        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-        sudo ${vppctl_binary} -s ${sockfile} set interface state loop1 up
-        sudo ${vppctl_binary} -s ${sockfile} create loopback interface
-        sudo ${vppctl_binary} -s ${sockfile} set interface state loop2 up
-        sudo ${vppctl_binary} -s ${sockfile} ip table add 1
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop0 1
-        sudo ${vppctl_binary} -s ${sockfile} ip table add 2
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop1 2
-        sudo ${vppctl_binary} -s ${sockfile} ip table add 3
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip table loop2 3
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop0 172.16.1.1/24
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop1 172.16.2.1/24
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address loop2 172.16.3.1/24
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id server secret 1234 sw_if_index 1
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id proxy secret 1234 sw_if_index 2
-        sudo ${vppctl_binary} -s ${sockfile} app ns add id client secret 1234 sw_if_index 3
-        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
-        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.3.1/32 table 2 via lookup in table 3
-        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
-        sudo ${vppctl_binary} -s ${sockfile} ip route add 172.16.2.1/32 table 3 via lookup in table 2
+        sudo ./vppctl -s ${sockfile} create loopback interface
+        sudo ./vppctl -s ${sockfile} set interface state loop0 up
+        sudo ./vppctl -s ${sockfile} create loopback interface
+        sudo ./vppctl -s ${sockfile} set interface state loop1 up
+        sudo ./vppctl -s ${sockfile} create loopback interface
+        sudo ./vppctl -s ${sockfile} set interface state loop2 up
+        sudo ./vppctl -s ${sockfile} ip table add 1
+        sudo ./vppctl -s ${sockfile} set interface ip table loop0 1
+        sudo ./vppctl -s ${sockfile} ip table add 2
+        sudo ./vppctl -s ${sockfile} set interface ip table loop1 2
+        sudo ./vppctl -s ${sockfile} ip table add 3
+        sudo ./vppctl -s ${sockfile} set interface ip table loop2 3
+        sudo ./vppctl -s ${sockfile} set interface ip address loop0 172.16.1.1/24
+        sudo ./vppctl -s ${sockfile} set interface ip address loop1 172.16.2.1/24
+        sudo ./vppctl -s ${sockfile} set interface ip address loop2 172.16.3.1/24
+        sudo ./vppctl -s ${sockfile} app ns add id server secret 1234 if loop0
+        sudo ./vppctl -s ${sockfile} app ns add id proxy secret 1234 if loop1
+        sudo ./vppctl -s ${sockfile} app ns add id client secret 1234 if loop2
+        sudo ./vppctl -s ${sockfile} ip route add 172.16.1.1/32 table 2 via lookup in table 1
+        sudo ./vppctl -s ${sockfile} ip route add 172.16.3.1/32 table 2 via lookup in table 3
+        sudo ./vppctl -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
+        sudo ./vppctl -s ${sockfile} ip route add 172.16.2.1/32 table 3 via lookup in table 2
 
 For more detailed usage on above commands, refer to following links,
 
@@ -333,12 +330,18 @@ For more detailed usage on above NGINX configuration, refer to following links,
 - `nginx http proxy module reference`_
 - `nginx http ssl module reference`_
 
-Create a 1kb file in NGINX https server root directory:
+Create a 1kb file in NGINX https server root directory for downloading:
 
 .. code-block:: shell
 
         sudo mkdir -p /var/www/html
         sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
+
+Declare a variable to hold the VPP library for ``LD_PRELOAD``:
+
+.. code-block:: shell
+
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
 
 Start NGINX https server on core 2 over VPP's host stack:
 
@@ -352,7 +355,7 @@ Start NGINX https proxy on core 3 over VPP's host stack:
 
         sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_proxy.conf nginx -c /path/to/nginx_proxy.conf"
 
-To examine the NGINX sessions in VPP, use the command ``sudo ${vppctl_binary} -s ${sockfile} show session verbose``.
+To examine the NGINX sessions in VPP, use the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
 Here is a sample output for NGINX sessions:
 
 .. code-block:: none
@@ -444,6 +447,8 @@ Get interface name and PCIe address from ``lshw`` command:
 
         sudo lshw -c net -businfo
 
+The output will look similar to:
+
 .. code-block:: none
 
         Bus info          Device      Class      Description
@@ -467,8 +472,11 @@ Quickly setup VPP and NGINX https proxy on DUT:
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/ssl_proxy/run_vpp.sh -p 0001:01:00.0,0001:01:00.1-c 1
+        ./usecase/ssl_proxy/run_vpp.sh -p 0001:01:00.0,0001:01:00.1 -c 1
         ./usecase/ssl_proxy/run_nginx_proxy.sh -c 2 
+
+.. note::
+        Replace sample addresses in above command with desired PCIe addresses on DUT.
 
 On server node start NGINX https server:
 
@@ -518,24 +526,37 @@ Manual Execution
 
 Users can also setup VPP & NGINX and test ssl proxy case step by step.
 
-DUT Setup
+VPP Setup
 ~~~~~~~~~
 
-Start vpp as a daemon with config parameters and declare a variable with the vpp cli socket::
+Declare a variable to hold the cli socket for VPP:
 
-        sudo ${vpp_binary} unix {cli-listen /run/vpp/cli.sock} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+.. code-block:: shell
+
         export sockfile="/run/vpp/cli.sock"
 
-Create rdma ethernet interfaces and set ip addresses::
+Run VPP as a daemon on core 1 with interface PCIe addresses and session layer enabled:
 
-        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f0 name eth0
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth0 172.16.1.2/30
-        sudo ${vppctl_binary} -s ${sockfile} set interface state eth0 up
-        sudo ${vppctl_binary} -s ${sockfile} create interface rdma host-if enP1p1s0f1 name eth1
-        sudo ${vppctl_binary} -s ${sockfile} set interface ip address eth1 172.16.2.1/30
-        sudo ${vppctl_binary} -s ${sockfile} set interface state eth1 up
+.. code-block:: shell
 
-Create a VCL configuration file for nginx https proxy ``vcl_nginx_proxy_pn.conf``::
+        cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} dpdk {dev 0000:01:00.0 {name eth0} dev 0000:01:00.1 {name eth1}}
+
+.. note::
+        Replace sample addresses in above command with desired PCIe addresses on DUT.
+
+Bring two VPP ethernet interfaces up and set ip addresses:
+
+.. code-block:: shell
+
+        sudo ./vppctl -s ${sockfile} set interface state eth0 up
+        sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.1.2/24
+        sudo ./vppctl -s ${sockfile} set interface state eth1 up
+        sudo ./vppctl -s ${sockfile} set interface ip address eth1 172.16.2.1/24
+
+Create a VCL configuration file for NGINX https proxy ``vcl_nginx_proxy_pn.conf``:
+
+.. code-block:: none
 
         vcl {
           heapsize 64M
@@ -546,10 +567,16 @@ Create a VCL configuration file for nginx https proxy ``vcl_nginx_proxy_pn.conf`
           app-socket-api /var/run/vpp/app_ns_sockets/default
         }
 
-The above configures vcl to request 4MB receive and transmit fifo sizes and it
-provides the path to vpp's session layer socket api.
+The above configures vcl to request 4MB receive and transmit fifo sizes and 
+provides the path to vpp's session layer socket api. For more vcl parameters
+usage, refer to `VPP vcl reference`_.
 
-Create ssl private key and certificate for nginx https proxy::
+NGINX Setup ON DUT
+~~~~~~~~~~~~~~~~~~
+
+Create ssl private key and certificate for nginx https proxy:
+
+.. code-block:: shell
 
         sudo mkdir -p /etc/nginx/certs
         sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/proxy.key -out /etc/nginx/certs/proxy.crt
@@ -557,22 +584,27 @@ Create ssl private key and certificate for nginx https proxy::
 Create nginx config file ``nginx_proxy.conf`` for nginx https proxy. It is same
 as the ``nginx_proxy.conf`` in loopback connection section. 
 
-Start nginx https proxy over VPP's host stack::
+Start nginx https proxy on core 2 over VPP's host stack:
+
+.. code-block:: shell
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_proxy_pn.conf nginx -c /path/to/nginx_proxy.conf"
 
-To examine the nginx proxy session in VPP, run the command ``show session verbose``.
-Here is a sample output for nginx proxy session::
+To examine the NGINX proxy session in VPP, run the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
+Here is a sample output for nginx proxy session:
 
-        sudo ${vppctl_binary} -s ${sockfile} show session verbose
+.. code-block:: none
+
         Connection                                                  State          Rx-f      Tx-f
         [0:0][T] 0.0.0.0:8089->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1 
 
-Test
-~~~~
+NGINX Setup ON Server Node
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-On https server node create ssl private key and certificate for NGINX https server::
+On server node create ssl private key and certificate for NGINX https server:
+
+.. code-block:: shell
 
         sudo mkdir -p /etc/nginx/certs
         sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
@@ -580,25 +612,58 @@ On https server node create ssl private key and certificate for NGINX https serv
 Create NGINX config file ``nginx_server.conf`` for NGINX https server. It is same
 as the ``nginx_server.conf`` in loopback connection section. 
 
-Create 1kb file in NGINX https server root directory::
+Create a 1kb file in NGINX https server root directory for downloading:
+
+.. code-block:: shell
 
         sudo mkdir -p /var/www/html
         sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
 
-Start NGINX https server::
+Start NGINX https server:
+
+.. code-block:: shell
 
         sudo taskset -c 1 nginx -c /path/to/nginx_server.conf
 
-Refer to wrk2 part in script running section to run wrk2 on client node to test ssl proxy.
+Test
+~~~~
+
+On client node download, build and run wrk2 to test ssl proxy:
+
+.. code-block:: shell
+
+        x86: git clone https://github.com/giltene/wrk2.git && cd wrk2
+        OR
+        aarch64: git clone https://github.com/AmpereTravis/wrk2-aarch64.git && cd wrk2-aarch64
+        make all
+        sudo taskset -c 1 ./wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
+ 
+If the case runs successfully, the measurement results will be printed by wrk2 client:
+
+.. code-block:: none
+
+        Initialised 1 threads in 0 ms.
+        Running 10s test @ https://172.16.2.1:8089/1kb
+          1 threads and 10 connections
+          Thread Stats   Avg      Stdev     Max   +/- Stdev
+            Latency     5.01s     2.88s    9.99s    57.66%
+            Req/Sec        nan       nan   0.00      0.00%
+          424079 requests in 10.00s, 516.87MB read
+        Requests/sec:  42406.22
+        Transfer/sec:     51.68MB
 
 Stop
 ~~~~
 
-Kill VPP on DUT::
+Kill VPP on DUT:
+
+.. code-block:: shell
 
         sudo pkill -9 vpp
 
-Kill NGINX on DUT and https server node::
+Kill NGINX on DUT and server nodes:
+
+.. code-block:: shell
 
         sudo pkill -9 nginx
 

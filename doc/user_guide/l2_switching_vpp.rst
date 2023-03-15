@@ -30,7 +30,7 @@ is no entry matching the destination MAC address in the l2fib, then VPP will flo
 the frame out every interface connected on the same bridge domain.
 
 This guide explains in detail on how to use the VPP based L2 switching using either
-memif or dpdk interfaces. Other interfaces supported by VPP (e.g. veth) should
+memif or DPDK interfaces. Other interfaces supported by VPP (e.g. veth) should
 follow a similar setup, but are not covered in this guide. Users can execute bundled
 scripts in dataplane-stack repo to quickly establish the L2 switching cases or manually
 run the use cases by following detailed guidelines step by step.
@@ -114,6 +114,8 @@ Run a VPP instance as L2 switch on cores 1 & 2:
         cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
         sudo ./vpp unix {cli-listen ${sockfile_sw}} cpu {main-core 1 corelist-workers 2}
 
+For more VPP configuration parameters, refer to `VPP configuration reference`_.
+
 Create memif interfaces and associate interfaces with a bridge domain:
 
 .. code-block:: shell
@@ -144,7 +146,7 @@ Here is a sample output for the static l2fib entry added previously:
         00:00:0a:81:00:02    1      2      0/0      no      *      -     -             memif2/1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
 
-For more detailed usage of VPP commands used above, refer to following links,
+For more detailed usage of VPP commands used above, refer to the following links,
 
 - `VPP memif interface reference`_
 - `VPP set interface state reference`_
@@ -211,6 +213,7 @@ to display VPP switch interfaces rx/tx counters. Here is a sample output:
                                                                rx bytes       2253160448
         memif2/1         2      up          9000/0/0/0         tx packets       35205632
                                                                tx bytes       2253160448
+
 Stop
 ~~~~
 
@@ -236,14 +239,16 @@ hardware platforms, e.g., IXIA/Spirent Smartbits.
    Ethernet connection
 
 Find out which DUT interfaces are connected with traffic generator.
-``sudo ethtool --identify <interface_name>`` will typically blink a light on the NIC to help identify the
-physical port associated with the interface.
+``sudo ethtool --identify <interface_name>`` will typically blink a light on the NIC
+to help identify the physical port associated with the interface.
 
 Get interface names and PCIe addresses from ``lshw`` command:
 
 .. code-block:: shell
 
         sudo lshw -c net -businfo
+
+The output will look similar to:
 
 .. code-block:: none
 
@@ -253,7 +258,9 @@ Get interface names and PCIe addresses from ``lshw`` command:
         pci@0001:01:00.0  enP1p1s0f0  network    MT27800 Family [ConnectX-5]
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
-In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is the input interface,
+Of the two interfaces connected to the traffic generator, arbitrarily choose one
+to be the input interface and the other to be the output interface. In this setup
+example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is the input interface,
 and ``enP1p1s0f1`` at PCIe address ``0001:01:00.1`` is the output interface.
 
 Automated Execution
@@ -267,13 +274,13 @@ Quickly setup VPP switch with input/output interface PCIe addresses on specified
         ./usecase/l2_switching/run_vpp_sw.sh -p 0001:01:00.0,0001:01:00.1 -c 1,2
 
 .. note::
-        Use interface PCIe addresses on DUT to replace sample addresses in above example.
+        Replace sample addresses in above command with desired PCIe addresses on DUT.
 
-Configure traffic generator to send packets to VPP input interface at PCIe address
-``0001:01:00.0`` with a destination MAC address of ``00:00:0a:81:00:02``, then VPP
-switch will forward those packets out on output interface at PCIe address ``0001:01:00.1``.
+Configure traffic generator to send packets to VPP input interface with a destination
+MAC address of ``00:00:0a:81:00:02``, then VPP switch will forward those packets out
+on VPP output interface.
 
-Examine VPP switch dpdk interfaces rx/tx counters after several seconds:
+Examine VPP switch DPDK interfaces rx/tx counters after several seconds:
 
 .. code-block:: shell
 
@@ -291,8 +298,8 @@ Here is a sample output:
                                                                 tx bytes             37891584000
 
 .. note::
-        VPP eth0 is the aliased name of the NIC interface at PCIe address ``0001:01:00.0``.
-        VPP eth1 is the aliased name of the NIC interface at PCIe address ``0001:01:00.1``.
+        VPP eth0 is the aliased name of the input interface, which is at PCIe address ``0001:01:00.0`` in the example.
+        VPP eth1 is the aliased name of the output interface, which is at PCIe address ``0001:01:00.1`` in the example.
 
 Stop VPP switch:
 
@@ -348,16 +355,16 @@ Here is a sample output for the static l2fib entry added previously:
          00:00:0a:81:00:02    1      2      0/0      no      *      -     -             eth1
         L2FIB total/learned entries: 1/0  Last scan time: 0.0000e0sec  Learn limit: 16777216
 
-For more detailed usage of VPP dpdk section used above, refer to following link,
+For more detailed usage of VPP DPDK section used above, refer to the following link,
 
 - `VPP configuration dpdk section reference`_
 
 Test
 ~~~~
 
-Configure traffic generator to send packets to VPP input interface ``eth0`` at
-PCIe address ``0001:01:00.0`` with a destination MAC address of ``00:00:0a:81:00:02``,
-then VPP switch will forward those packets out on VPP output interface ``eth1`` at PCIe address ``0001:01:00.1``.
+Configure traffic generator to send packets to VPP input interface ``eth0`` with
+a destination MAC address of ``00:00:0a:81:00:02``, then VPP switch will forward
+those packets out on VPP output interface ``eth1``.
 
 Use the command ``sudo ./vppctl -s ${sockfile_sw} show interface`` to
 display VPP switch interfaces rx/tx counters. Here is a sample output:

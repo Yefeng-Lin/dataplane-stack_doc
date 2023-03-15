@@ -148,12 +148,13 @@ Declare a variable to hold the cli socket for VPP:
 
         export sockfile="/run/vpp/cli.sock"
 
-Start VPP as a daemon on core 1 with session enabled. For more configuration parameters,
-refer to `VPP configuration reference`_:
+Run VPP as a daemon on core 1 with session enabled:
 
 .. code-block:: shell
 
         sudo ${vpp_binary} unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+
+For more VPP configuration parameters, refer to `VPP configuration reference`_:
 
 Create loopback interfaces and routes by following VPP commands:
 

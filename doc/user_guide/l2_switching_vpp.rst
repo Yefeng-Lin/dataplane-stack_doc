@@ -59,7 +59,7 @@ instance and VPP based traffic generator.
 Automated Execution
 ===================
 
-Quickly setup VPP switch/traffic generator and test L2 switching use case:
+Quickly set up VPP switch/traffic generator and test L2 switching use case:
 
 .. code-block:: shell
 
@@ -96,7 +96,7 @@ Stop VPP:
 Manual Execution
 ================
 
-Users can also setup VPP switch/traffic generator and test L2 switching case step by step.
+Users can also set up VPP switch/traffic generator and test L2 switching case step by step.
 
 VPP Switch Setup
 ~~~~~~~~~~~~~~~~
@@ -201,7 +201,7 @@ Start to send the traffic to VPP switch instance over memif1/1:
 
         sudo ./vppctl -s ${sockfile_tg} packet-generator enable-stream tg0
 
-Then VPP switch instance will forward those packets out on interface memif2/2.
+Then VPP switch instance will forward those packets out on interface memif2/1.
 After several seconds, use the command ``sudo ./vppctl -s ${sockfile_sw} show interface``
 to display VPP switch interfaces rx/tx counters. Here is a sample output:
 
@@ -266,7 +266,7 @@ and ``enP1p1s0f1`` at PCIe address ``0001:01:00.1`` is the output interface.
 Automated Execution
 ===================
 
-Quickly setup VPP switch with input/output interface PCIe addresses on specified cores:
+Quickly set up VPP switch with input/output interface PCIe addresses on specified cores:
 
 .. code-block:: shell
 
@@ -310,7 +310,7 @@ Stop VPP switch:
 Manual Execution
 ================
 
-Users can also setup VPP switch and test L2 switching case step by step.
+Users can also set up VPP switch and test L2 switching case step by step.
 
 VPP Switch Setup
 ~~~~~~~~~~~~~~~~

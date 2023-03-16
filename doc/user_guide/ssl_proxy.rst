@@ -11,10 +11,12 @@ SSL REVERSE PROXY
 Introduction
 ************
 
-The SSL proxy controls Secure Sockets Layer – SSL traffic -to ensure secure
-transmission of data between a client and a server. It acts as an intermediary,
-performing SSL encryption and decryption between the client and the server.
-For client, it acts as a server. For server, it acts as a client.
+A proxy server is a intermediary server that forwards requests for content from
+clients to servers across network. A SSL reverse proxy is a type of proxy server
+that controls Secure Sockets Layer – SSL traffic – to ensure secure transmission
+of data between clients and servers. It acts as an intermediary, performing SSL
+encryption and decryption between the client and the server. For client, it acts
+as a server. For server, it acts as a client.
 
 wrk2 is a modern HTTP benchmarking tool capable of generating significant load
 when run on a single multi-core CPU. NGINX is open source software for web
@@ -46,7 +48,7 @@ shared memory infrastructure.
 
 This guide demonstrates two kinds of ssl proxy connection:
 
-- Loopback connection on one DUT node
+- Loopback connection on DUT node
 - DPDK ethernet connection between DUT and client/server nodes
 
 *******************
@@ -62,6 +64,8 @@ through VPP loopback interfaces.
    :align: center
    :width: 800
 
+   Loopback connection
+
 .. note::
         This setup requires four isolated cores. Cores 1-4 are assumed to be
         isolated in this guide.
@@ -69,7 +73,7 @@ through VPP loopback interfaces.
 Automated Execution
 ===================
 
-Quickly setup VPP & NGINX and test ssl proxy use case:
+Quickly setup VPP & NGINX and test ssl reverse proxy case:
 
 .. code-block:: shell
 
@@ -79,6 +83,8 @@ Quickly setup VPP & NGINX and test ssl proxy use case:
 .. note::
         You will be asked a series of questions in order to embed the information
         correctly in the certificate. Fill out the prompts appropriately.
+
+.. code-block:: shell
 
         ./usecase/ssl_proxy/run_nginx_server.sh -l -c 2
         ./usecase/ssl_proxy/run_nginx_proxy.sh -c 3 
@@ -121,12 +127,13 @@ Declare a variable to hold the cli socket for VPP:
 
         export sockfile="/run/vpp/cli.sock"
 
-Run VPP as a daemon on core 1 with session enabled. For more configuration parameters,
-refer to `VPP configuration reference`_:
+Run VPP as a daemon on core 1 with session layer enabled.
 
 .. code-block:: shell
 
         sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+
+For more configuration parameters, refer to `VPP configuration reference`_.
 
 Create loopback interfaces and routes by following VPP commands:
 
@@ -237,17 +244,14 @@ Create NGINX config file ``nginx_server.conf`` for NGINX https server:
 
 .. code-block:: none
 
-        user www-data;
         worker_processes 1;
         pid /run/nginx_server.pid;
 
-        events {
-        }
+        events {}
 
         http {
                 sendfile on;
                 tcp_nopush on;
-                tcp_nodelay on;
                 keepalive_requests 1000000000;
 
                 default_type application/octet-stream;
@@ -275,17 +279,14 @@ Create NGINX config file ``nginx_proxy.conf`` for NGINX https proxy:
 
 .. code-block:: none
 
-        user www-data;
         worker_processes 1;
         pid /run/nginx_proxy.pid;
 
-        events {
-        }
+        events {}
 
         http {
                 sendfile on;
                 tcp_nopush on;
-                tcp_nodelay on;
                 keepalive_requests 1000000000;
 
                 default_type application/octet-stream;

@@ -49,14 +49,14 @@ shared memory infrastructure.
 This guide demonstrates two kinds of ssl proxy connection:
 
 - Loopback connection on DUT node
-- DPDK ethernet connection between DUT and client/server nodes
+- Ethernet connection between DUT and client/server nodes
 
 *******************
 Loopback Connection
 *******************
 
 The loopback interface is a software virtual interface that is always up and available
-after it has been configured. In this setup, NGINX https server, NGINX https proxy
+after it has been configured. In this setup, NGINX https server, NGINX reverse proxy
 and wrk2 client run over VPP's host stack on DUT and communicate with each other
 through VPP loopback interfaces.
 
@@ -73,25 +73,22 @@ through VPP loopback interfaces.
 Automated Execution
 ===================
 
-Quickly setup VPP & NGINX and test ssl reverse proxy case:
+Quickly set up VPP & NGINX and test ssl reverse proxy case:
 
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack
-        ./usecase/ssl_proxy/run_dut.sh -l -c 1
-
-.. note::
-        You will be asked a series of questions in order to embed the information
-        correctly in the certificate. Fill out the prompts appropriately.
-
-.. code-block:: shell
-
+        ./usecase/ssl_proxy/run_vpp.sh -l -c 1
         ./usecase/ssl_proxy/run_nginx_server.sh -l -c 2
         ./usecase/ssl_proxy/run_nginx_proxy.sh -c 3 
         ./usecase/ssl_proxy/run_wrk2.sh -c 4 
 
 .. note::
-        Run ``./usecase/ssl_proxy/run_dut.sh --help`` for all supported options.
+        You will be asked a series of questions in order to embed the information
+        correctly in the certificate. Fill out the prompts appropriately.
+
+.. note::
+        Run ``./usecase/ssl_proxy/run_vpp.sh --help`` for all supported options.
 
 If the case runs successfully, the measurement results will be printed:
 
@@ -116,7 +113,7 @@ Stop VPP and NGINX:
 Manual Execution
 ================
 
-Users can also setup VPP & NGINX and test ssl proxy case step by step.
+Users can also set up VPP & NGINX and test ssl reverse proxy case step by step.
 
 VPP Setup
 ~~~~~~~~~
@@ -131,7 +128,7 @@ Run VPP as a daemon on core 1 with session layer enabled.
 
 .. code-block:: shell
 
-        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1} tcp {cc-algo cubic} session {enable use-app-socket-api}
 
 For more configuration parameters, refer to `VPP configuration reference`_.
 
@@ -162,14 +159,14 @@ Create loopback interfaces and routes by following VPP commands:
         sudo ./vppctl -s ${sockfile} ip route add 172.16.2.1/32 table 1 via lookup in table 2
         sudo ./vppctl -s ${sockfile} ip route add 172.16.2.1/32 table 3 via lookup in table 2
 
-For more detailed usage on above commands, refer to following links,
+For more detailed usage on above commands, refer to the following links,
 
 - `VPP set interface ip address reference`_
 - `VPP set interface state reference`_
 - `VPP ip route reference`_
 - `VPP app ns reference`_
 
-Create VCL configuration files for wrk2 and NGINX instances.
+Create VCL configuration files for NGINX instances and wrk2.
 
 - For NGINX https server ``vcl_nginx_server.conf``:
 
@@ -187,7 +184,7 @@ Create VCL configuration files for wrk2 and NGINX instances.
           app-socket-api /var/run/vpp/app_ns_sockets/server
         }
 
-- For NGINX https proxy ``vcl_nginx_proxy.conf``:
+- For NGINX reverse proxy ``vcl_nginx_proxy.conf``:
 
 .. code-block:: none
 
@@ -215,19 +212,20 @@ Create VCL configuration files for wrk2 and NGINX instances.
           tx-fifo-size 4000000
           namespace-id client
           namespace-secret 1234
+          use-mq-eventfd
           app-scope-global
           app-socket-api /var/run/vpp/app_ns_sockets/client
         }
 
-The above configure vcl to request 4MB receive and transmit fifo sizes and access
+The above configure VCL to request 4MB receive and transmit fifo sizes and access
 to global session scope. Additionally, they provide the path to session layer's
-different app namespace socket for wrk2 and NGINX instances. For more vcl parameters
+different app namespace socket for NGINX instances and wrk2. For more VCL parameters
 usage, refer to `VPP vcl reference`_.
 
 NGINX Setup
 ~~~~~~~~~~~
 
-Create ssl private keys and certificates for NGINX https server and proxy:
+Create ssl private keys and certificates for NGINX https server and reverse proxy:
 
 .. code-block:: shell
 
@@ -275,7 +273,7 @@ Create NGINX config file ``nginx_server.conf`` for NGINX https server:
                 }
         }
 
-Create NGINX config file ``nginx_proxy.conf`` for NGINX https proxy:
+Create NGINX config file ``nginx_proxy.conf`` for NGINX reverse proxy:
 
 .. code-block:: none
 
@@ -321,9 +319,9 @@ Create NGINX config file ``nginx_proxy.conf`` for NGINX https proxy:
         }
 
 .. note::
-        The https server ip address is used as the upstream server in ``nginx_proxy.conf`` file.
+        The https server ip address should be used as the upstream server in ``nginx_proxy.conf`` file.
 
-For more detailed usage on above NGINX configuration, refer to following links,
+For more detailed usage on above NGINX configuration, refer to the following links,
 
 - `nginx core functionality reference`_
 - `nginx http core module reference`_
@@ -350,7 +348,7 @@ Start NGINX https server on core 2 over VPP's host stack:
 
         sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_nginx_server.conf nginx -c /path/to/nginx_server.conf"
 
-Start NGINX https proxy on core 3 over VPP's host stack:
+Start NGINX reverse proxy on core 3 over VPP's host stack:
 
 .. code-block:: shell
 
@@ -379,7 +377,8 @@ If wrk2 is not installed, first download, patch and build wrk2 for aarch64 platf
         git am <nw_ds_workspace>/dataplane-stack/patches/wrk2/0001-wrk2-fd-vpp.patch
         make all
 
-Start wrk2 client on core 4 over VPP's host stack to test ssl proxy with 1kb file downloading:
+Run wrk2 client on core 4 over VPP's host stack to test ssl reverse proxy with 1kb
+file downloading:
 
 .. code-block:: shell
 
@@ -389,7 +388,7 @@ Start wrk2 client on core 4 over VPP's host stack to test ssl proxy with 1kb fil
         Extremely high rate (--rate) is used to ensure throughput is measured.
         Number of connections (-c) is set to 10 to produce high throughput.
         Test duration (-d) is 10 seconds.
-        Url is ssl proxy's url.
+        Url is NGINX reverse proxy's url.
 
 If both wrk2 and NGINX run successfully, wrk2 will output measurement result similar
 to the following:
@@ -413,24 +412,23 @@ Kill VPP:
 
 .. code-block:: shell
 
-        $ sudo pkill -9 vpp
+        sudo pkill -9 vpp
 
-Kill NGINX instances::
+Kill NGINX instances:
 
 .. code-block:: shell
 
-        $ sudo pkill -9 nginx
+        sudo pkill -9 nginx
 
-************************
-DPDK Ethernet Connection
-************************
+*******************
+Ethernet Connection
+*******************
 
-In this ssl proxy scenario, NGINX https server, NGINX https proxy and wrk2 https client
-run on separated hardware platforms and are connected with ethernet adaptors and cables.
-NGINX https proxy runs over VPP's host stack on DUT. NGINX https server runs over Linux
-kernel stack on server node. Wrk2 https client runs over Linux kernel stack on client node.
-The DUT has one NIC interface connected with the NGINX https server node, and another NIC
-interface connected with the wrk2 https client node.
+In this ssl reverse proxy scenario, NGINX https server, NGINX reverse proxy and
+wrk2 https client run on separated hardware platforms. The DUT has one NIC interface
+connected with the server node, and another NIC interface connected with the client node.
+NGINX reverse proxy runs over VPP's host stack on DUT. NGINX https server runs over Linux
+kernel stack on server node. wrk2 https client runs over Linux kernel stack on client node.
 
 .. figure:: ../images/ssl_proxy_dpdk.png
         :align: center
@@ -442,7 +440,7 @@ To find out which DUT interfaces are connected with https client/server nodes,
 ``sudo ethtool --identify <interface_name>`` will typically blink a light on the
 NIC to help identify the physical port associated with the interface.
 
-Get interface name and PCIe address from ``lshw`` command:
+Get interface names and PCIe addresses from ``lshw`` command:
 
 .. code-block:: shell
 
@@ -459,16 +457,16 @@ The output will look similar to:
         pci@0001:01:00.1  enP1p1s0f1  network    MT27800 Family [ConnectX-5]
 
 In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is used to
-connect with client node. The IP address of this NIC interface in VPP is configured
-as 1.1.1.2/30. The IP address of client node is 1.1.1.1/30. ``enP1p1s0f1`` at PCIe
-address ``0001:01:00.1`` is used to connect with server node. The IP address of this
-NIC interface in VPP is configured as 1.1.1.2/30. The IP address of server node
-is 1.1.1.1/30.
+connect with the client node. The IP address of this NIC interface in VPP is configured
+as 172.16.2.1/24. The IP address of client node is 172.16.2.2/24. ``enP1p1s0f1`` at PCIe
+address ``0001:01:00.1`` is used to connect with the server node. The IP address of this
+NIC interface in VPP is configured as 172.16.1.2/24. The IP address of server node
+is 172.16.1.1/24.
 
 Automated Execution
 ===================
 
-Quickly setup VPP and NGINX https proxy on DUT:
+Quickly set up VPP and NGINX reverse proxy on DUT:
 
 .. code-block:: shell
 
@@ -479,6 +477,10 @@ Quickly setup VPP and NGINX https proxy on DUT:
 .. note::
         Replace sample addresses in above command with desired PCIe addresses on DUT.
 
+.. note::
+        You will be asked a series of questions in order to embed the information
+        correctly in the certificate. Fill out the prompts appropriately.
+
 On server node start NGINX https server:
 
 .. code-block:: shell
@@ -486,7 +488,7 @@ On server node start NGINX https server:
         cd <nw_ds_workspace>/dataplane-stack
         ./usecase/ssl_proxy/run_nginx_server.sh -p
 
-On client node download, build and run wrk2 to test ssl proxy:
+On client node download, build and run wrk2 to test ssl reverse proxy:
 
 .. code-block:: shell
 
@@ -496,7 +498,7 @@ On client node download, build and run wrk2 to test ssl proxy:
         make all
         sudo taskset -c 1 ./wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
  
-If the case runs successfully, the measurement results will be printed by wrk client:
+If the case runs successfully, the measurement results will be printed by wrk2 client:
 
 .. code-block:: none
 
@@ -510,13 +512,13 @@ If the case runs successfully, the measurement results will be printed by wrk cl
         Requests/sec:  42406.22
         Transfer/sec:     51.68MB
 
-Stop VPP and NGINX proxy on DUT:
+Stop VPP and NGINX on DUT:
 
 .. code-block:: shell
 
         ./usecase/ssl_proxy/stop.sh
 
-Stop NGINX server on server node:
+Stop NGINX on server node:
 
 .. code-block:: shell
 
@@ -525,7 +527,7 @@ Stop NGINX server on server node:
 Manual Execution
 ================
 
-Users can also setup VPP & NGINX and test ssl proxy case step by step.
+Users can also set up VPP & NGINX and test ssl reverse proxy case step by step.
 
 VPP Setup
 ~~~~~~~~~
@@ -541,7 +543,7 @@ Run VPP as a daemon on core 1 with interface PCIe addresses and session layer en
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
-        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} dpdk {dev 0000:01:00.0 {name eth0} dev 0000:01:00.1 {name eth1}}
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1} tcp {cc-algo cubic} dpdk {dev 0000:01:00.0 {name eth0} dev 0000:01:00.1 {name eth1}} session {enable use-app-socket-api}
 
 .. note::
         Replace sample addresses in above command with desired PCIe addresses on DUT.
@@ -551,11 +553,11 @@ Bring two VPP ethernet interfaces up and set ip addresses:
 .. code-block:: shell
 
         sudo ./vppctl -s ${sockfile} set interface state eth0 up
-        sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.1.2/24
+        sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.2.1/24
         sudo ./vppctl -s ${sockfile} set interface state eth1 up
-        sudo ./vppctl -s ${sockfile} set interface ip address eth1 172.16.2.1/24
+        sudo ./vppctl -s ${sockfile} set interface ip address eth1 172.16.1.2/24
 
-Create a VCL configuration file for NGINX https proxy ``vcl_nginx_proxy_pn.conf``:
+Create a VCL configuration file for NGINX reverse proxy ``vcl_nginx_proxy_pn.conf``:
 
 .. code-block:: none
 
@@ -568,24 +570,28 @@ Create a VCL configuration file for NGINX https proxy ``vcl_nginx_proxy_pn.conf`
           app-socket-api /var/run/vpp/app_ns_sockets/default
         }
 
-The above configures vcl to request 4MB receive and transmit fifo sizes and 
-provides the path to vpp's session layer socket api. For more vcl parameters
+The above configures VCL to request 4MB receive and transmit fifo sizes and 
+provides the path to vpp's session layer socket api. For more VCL parameters
 usage, refer to `VPP vcl reference`_.
 
-NGINX Setup ON DUT
+NGINX Setup on DUT
 ~~~~~~~~~~~~~~~~~~
 
-Create ssl private key and certificate for nginx https proxy:
+Create ssl private key and certificate for NGINX reverse proxy:
 
 .. code-block:: shell
 
         sudo mkdir -p /etc/nginx/certs
         sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/proxy.key -out /etc/nginx/certs/proxy.crt
 
-Create nginx config file ``nginx_proxy.conf`` for nginx https proxy. It is same
+.. note::
+        You will be asked a series of questions in order to embed the information
+        correctly in the certificate. Fill out the prompts appropriately.
+
+Create NGINX config file ``nginx_proxy.conf`` for NGINX reverse proxy. It is same
 as the ``nginx_proxy.conf`` in loopback connection section. 
 
-Start nginx https proxy on core 2 over VPP's host stack:
+Start NGINX on core 2 over VPP's host stack:
 
 .. code-block:: shell
 
@@ -600,7 +606,7 @@ Here is a sample output for nginx proxy session:
         [0:0][T] 0.0.0.0:8089->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1 
 
-NGINX Setup ON Server Node
+NGINX Setup on Server Node
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 On server node create ssl private key and certificate for NGINX https server:
@@ -629,7 +635,7 @@ Start NGINX https server:
 Test
 ~~~~
 
-On client node download, build and run wrk2 to test ssl proxy:
+On client node download, build and run wrk2 to test ssl reverse proxy case:
 
 .. code-block:: shell
 
@@ -639,7 +645,8 @@ On client node download, build and run wrk2 to test ssl proxy:
         make all
         sudo taskset -c 1 ./wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
  
-If the case runs successfully, the measurement results will be printed by wrk2 client:
+If both wrk2 and NGINX run successfully, wrk2 will output measurement result similar
+to the following:
 
 .. code-block:: none
 
@@ -678,10 +685,10 @@ Resources
 #. `VPP ip route reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_ip.html#ip-route>`_
 #. `VPP app ns reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/clis/clicmd_src_vnet_session.html#app-ns>`_
 #. `VPP cli reference <https://s3-docs.fd.io/vpp/22.02/cli-reference/index.html>`_
-#. `iperf3 usage reference <https://software.es.net/iperf/invoking.html>`_
+#. `VPP vcl reference <https://wiki.fd.io/view/VPP/HostStack/VCL>`_
 #. `nginx core functionality reference <https://nginx.org/en/docs/ngx_core_module.html>`_
 #. `nginx http core module reference <https://nginx.org/en/docs/http/ngx_http_core_module.html>`_
 #. `nginx http upstream module reference <https://nginx.org/en/docs/http/ngx_http_upstream_module.html>`_
 #. `nginx http proxy module reference <https://nginx.org/en/docs/http/ngx_http_proxy_module.html>`_
 #. `nginx http ssl module reference <https://nginx.org/en/docs/http/ngx_http_ssl_module.html>`_
-. `nginx http ssl module reference <https://nginx.org/en/docs/http/ngx_http_ssl_module.html>`_
+#. `nginx http ssl module reference <https://nginx.org/en/docs/http/ngx_http_ssl_module.html>`_

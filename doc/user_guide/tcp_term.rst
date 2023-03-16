@@ -47,7 +47,7 @@ shared memory infrastructure.
 This guide demonstrates two kinds of iperf3 connection:
 
 - Loopback connection on DUT node
-- DPDK ethernet connection between DUT and client nodes
+- Ethernet connection between DUT and client nodes
 
 *******************
 Loopback Connection
@@ -70,7 +70,7 @@ host stack on DUT and communicate with each other through VPP loopback interface
 Automated Execution
 ===================
 
-Quickly setup VPP & iperf3 and test tcp termination use case:
+Quickly set up VPP & iperf3 and test tcp termination use case:
 
 .. code-block:: shell
 
@@ -117,7 +117,7 @@ Stop VPP and iperf3:
 Manual Execution
 ================
 
-Users can also setup VPP & iperf3 and test tcp termination case step by step.
+Users can also set up VPP & iperf3 and test tcp termination case step by step.
 
 VPP Setup
 ~~~~~~~~~
@@ -133,7 +133,7 @@ Run VPP as a daemon on core 1 with session layer enabled:
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
-        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} session {enable use-app-socket-api}
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1} tcp {cc-algo cubic} session {enable use-app-socket-api}
 
 For more VPP configuration parameters, refer to `VPP configuration reference`_:
 
@@ -262,17 +262,17 @@ Kill VPP:
 
 .. code-block:: shell
 
-        $ sudo pkill -9 vpp
+        sudo pkill -9 vpp
 
 Kill iperf3 server:
 
 .. code-block:: shell
 
-        $ sudo pkill -9 iperf3
+        sudo pkill -9 iperf3
 
-************************
-DPDK Ethernet Connection
-************************
+*******************
+Ethernet Connection
+*******************
 
 In this tcp termination scenario, iperf3 server and client run on separated hardware
 platforms and are connected with ethernet adaptors and cables. iperf3 server runs over
@@ -311,7 +311,7 @@ as 172.16.3.1/24. The IP address of client node is 172.16.3.2/24.
 Automated Execution
 ===================
 
-Quickly setup VPP and iperf3 server on DUT:
+Quickly set up VPP and iperf3 server on DUT:
 
 .. code-block:: shell
 
@@ -359,7 +359,7 @@ Stop VPP and iperf3:
 Manual Execution
 ================
 
-Users can also setup VPP & iperf3 and test tcp termination case step by step.
+Users can also set up VPP & iperf3 and test tcp termination case step by step.
 
 VPP Setup
 ~~~~~~~~~
@@ -375,7 +375,7 @@ Run VPP as a daemon on core 1 with interface PCIe address and session layer enab
 .. code-block:: shell
 
         cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
-        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1 workers 0} tcp {cc-algo cubic} dpdk {dev 0000:01:00.0 {name eth0}} session {enable use-app-socket-api}
+        sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1} tcp {cc-algo cubic} dpdk {dev 0000:01:00.0 {name eth0}} session {enable use-app-socket-api}
 
 .. note::
         Replace sample address in above command with desired PCIe address on DUT.

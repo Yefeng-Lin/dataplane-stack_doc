@@ -1,8 +1,15 @@
-From caeec3ae5668902af36a0f31e0649127936f0036 Mon Sep 17 00:00:00 2001
+From 519472e2ff8c3c28448e3be4782bd298c089cb7e Mon Sep 17 00:00:00 2001
 From: yeflin01 <yefeng.lin@arm.com>
 Date: Fri, 3 Feb 2023 17:12:13 +0800
-Subject: [PATCH] Modify max number of file descriptors tracked to run over vpp
+Subject: [PATCH] extended  wrk2 eventLoop size to run over vpp
 
+Wrk2 will raise an error, if the socket file descriptor is larger than
+the eventLoop size. This can occur when running wrk2 over VPP, as the
+file descriptor range of the socket is larger than that of running over
+the Kernel. To ensure wrk2 can run normally over VPP, it is necessary to
+extend the eventLoop size.
+
+Signed-off-by: Yefeng Lin <yefeng.lin@arm.com>
 ---
  src/wrk.c | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)

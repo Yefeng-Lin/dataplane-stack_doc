@@ -19,7 +19,7 @@ help_func()
     echo "Usage: ./run_wrk.sh OPTS [ARGS]"
     echo "where  OPTS := -l ssl proxy test via loopback interface"
     echo "            := -p ssl proxy test via physical NIC"
-    echo "            := -c isolate cpu core, example: -c 4"
+    echo "            := -c set cpu affinity of wrk, example: -c 4"
     echo "            := -h help"
     echo "Example:"
     echo "  ./run_wrk.sh -l -c 4"
@@ -53,7 +53,7 @@ while true; do
           ;;
       -c)
           if [ "$#" -lt "2" ]; then
-              echo "error: \"-c\" requires isolate cpu core"
+              echo "error: \"-c\" requires cpu isolation core id:"
               help_func
               exit 1
           fi
@@ -84,7 +84,7 @@ if ! [[ ${LOOP_BACK} || ${PHY_IFACE} ]]; then
 fi
  
 if ! [[ ${MAINCORE} ]]; then
-      echo "error: \"-c\" option must be set"
+      echo "error: \"-c\" option bad usage"
       help_func
       exit 1
 fi

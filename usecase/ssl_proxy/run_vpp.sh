@@ -14,9 +14,9 @@ help_func()
     echo "            := -p ssl proxy test via physical NIC"
     echo "            := -c cpu core assignments"
     echo "            := -h help"
-    echo "       ARGS := \"-p\" needs two physical NIC PCIe address, one NIC connected to wrk2 client"
+    echo "       ARGS := \"-p\" needs two physical NIC PCIe addresses, one NIC connected to wrk2 client"
     echo "               and another NIC connected to nginx server, example: -p <client_PCIe_addr,server_PCIe_addr>"
-    echo "               using \"lshw -c net -businfo\" get interface names"
+    echo "               using \"lshw -c net -businfo\" get physical NIC PCIe address"
     echo "            := \"-c\" assign VPP main thread to a CPU core, example: -c <main-core>"
     echo "Example:"
     echo "  ./run_vpp.sh -l -c 1"
@@ -81,7 +81,7 @@ while true; do
 	  ;;
       -p)
           if [ "$#" -lt "2" ]; then
-              echo "error: \"-p\" requires two physical NIC interfaces name"
+              echo "error: \"-p\" requires two physical NIC PCIe addresses"
               help_func
 	      exit 1
           fi
@@ -97,7 +97,7 @@ while true; do
 	  ;;
       -c)
           if [ "$#" -lt "2" ]; then
-              echo "error: \"-c\" requires a cpu isolation core number"
+              echo "error: \"-c\" requires a cpu isolation core id:"
 	      help_func
 	      exit 1
 	  fi
@@ -128,7 +128,7 @@ if ! [[ ${LOOP_BACK} || ${PHY_IFACE} ]]; then
 fi
 
 if [[ ${PHY_IFACE[*]} && ! ${PCIe_addr[*]} ]]; then
-    echo "error: \"-p\" need two physical NIC interface names:"
+    echo "error: \"-p\" need two physical NIC PCIe addresses:"
     help_func
     exit 1
 fi

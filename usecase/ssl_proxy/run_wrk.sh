@@ -6,6 +6,14 @@
 
 #!/usr/bin/env bash
 
+set -e
+
+export DIR
+export DATAPLANE_TOP
+export LOOP_BACK
+export PHY_IFACE
+export MAINCORE
+
 help_func()
 {
     echo "Usage: ./run_wrk.sh OPTS [ARGS]"
@@ -19,13 +27,14 @@ help_func()
     echo
 }
  
-export DIR=$(cd "$(dirname "$0")";pwd)
-export DATAPLANE_TOP=${DIR}/../..
+DIR=$(cd "$(dirname "$0")" || exit 1 ;pwd)
+DATAPLANE_TOP=${DIR}/../..
+# shellcheck source=../../tools/check-path.sh
 . "${DATAPLANE_TOP}"/tools/check-path.sh
+wrk_binary=${DATAPLANE_TOP}/components/wrk2-aarch64/wrk
 
-args="$@"
 options=(-o "hlp:c:")
-opts=$(getopt ${options[@]} -- $args)
+opts=$(getopt "${options[@]}" -- "$@")
 eval set -- "$opts"
 
 while true; do
@@ -35,7 +44,7 @@ while true; do
           exit 0
           ;;
       -l)
-          export LOOPBACK="1"
+          export LOOP_BACK="1"
           shift 1
           ;;
       -p)
@@ -48,7 +57,7 @@ while true; do
               help_func
               exit 1
           fi
-          export CORELIST="$2"
+          export MAINCORE="$2"
           shift 2
           ;;
       --)
@@ -62,19 +71,19 @@ while true; do
     esac
 done
  
-if [[ ${LOOPBACK} && ${PHY_IFACE} ]]; then
+if [[ ${LOOP_BACK} && ${PHY_IFACE} ]]; then
       echo "Don't support both -l and -p at the same time!!"
       help_func
       exit 1
 fi
  
-if ! [[ ${LOOPBACK} || ${PHY_IFACE} ]]; then
+if ! [[ ${LOOP_BACK} || ${PHY_IFACE} ]]; then
       echo "Need a option: \"-l\" or \"-p\""
       help_func
       exit 1
 fi
  
-if ! [ ${CORELIST} ]; then
+if ! [[ ${MAINCORE} ]]; then
       echo "error: \"-c\" option must be set"
       help_func
       exit 1
@@ -82,16 +91,28 @@ fi
 
 check_ldp
 
+if ! [[ $(command -v "${wrk_binary}") ]]; then
+      echo "wrk2 building..."
+      cd "${DIR}"/../../components
+      git clone https://github.com/AmpereTravis/wrk2-aarch64.git
+      cd wrk2-aarch64
+      git am "${DIR}"/../../patches/wrk2/0001-wrk2-fd-vpp.patch
+      make all > /dev/null 2>&1
+fi
+
+echo "Found wrk2 at: $(command -v "${wrk_binary}")"
+
 echo "=========="
 echo "Starting wrk2 test..."
 
 VCL_WRK_CONF=vcl_wrk2.conf
-if [ -n "$LOOPBACK" ]; then
-    sudo taskset -c ${CORELIST} sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
+if [ -n "$LOOP_BACK" ]; then
+    sudo taskset -c "${MAINCORE}" sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
 fi
 
 if [ -n "$PHY_IFACE" ]; then
-    sudo taskset -c ${CORELIST} sh -c "${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
+    sudo taskset -c "${MAINCORE}" sh -c "${wrk_binary} --rate 100000000 -t 1 -c 10 -d 10s https://172.16.2.1:8089/1kb"
 fi
 
+echo ""
 echo "Done!!"

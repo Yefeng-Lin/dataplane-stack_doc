@@ -4,6 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-echo "release VPP instance and nginx proxy & server"
+echo "release VPP instance and nginx proxy & server..."
 sudo pkill -9 vpp
 sudo pkill -9 nginx

@@ -39,7 +39,7 @@ Network Stack Layers
 VPP's host stack provides alternatives to kernel-based sockets so that applications
 can take full advantage of VPP's high performance. It implements a clean slate TCP
 that supports vectorized packet processing and follows VPP’s highly scalable threading
-model. The implementation is RFC compliant, supports a high number of high-speed TCP
+model. The implementation is RFC compliant and supports many high-speed TCP
 protocol features. VPP's host stack also provides a transport pluggable session layer
 that abstracts the interaction between applications and transports using a custom-built
 shared memory infrastructure.

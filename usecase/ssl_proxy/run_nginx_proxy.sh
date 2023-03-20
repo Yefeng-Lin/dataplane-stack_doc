@@ -31,7 +31,7 @@ DATAPLANE_TOP=${DIR}/../..
 # shellcheck source=../../tools/check-path.sh
 . "${DATAPLANE_TOP}"/tools/check-path.sh
 
-options=(-o "hlp:c:")
+options=(-o "hlpc:")
 opts=$(getopt "${options[@]}" -- "$@")
 eval set -- "$opts"
 

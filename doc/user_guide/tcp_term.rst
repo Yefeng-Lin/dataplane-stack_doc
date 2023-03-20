@@ -21,17 +21,17 @@ on IP networks. In this guide it is used to measure the maximum attainable goodp
 of the VPP's host stack on DUT node.
 
 This guide explains in detail on how to integrate iperf3 with VPP's host stack
-for tcp termination cases. The integration is done via LD_PRELOAD which
+for TCP termination cases. The integration is done via LD_PRELOAD which
 intercepts syscalls that are supposed to go into the kernel and reinjects
 them into VPP. Users can execute bundled scripts in dataplane-stack repo to quickly
-establish the tcp termination cases or manually run the use cases by following
+establish the TCP termination cases or manually run the use cases by following
 detailed guidelines step by step.
 
 ********************
 Network Stack Layers
 ********************
 
-.. figure:: ../images/kernel-vpp-stack.png
+.. figure:: ../images/kernel_vpp_stack.png
    :align: center
 
    Linux kernel stack VS VPP's host stack.
@@ -42,7 +42,10 @@ that supports vectorized packet processing and follows VPP’s highly scalable t
 model. The implementation is RFC compliant and supports many high-speed TCP
 protocol features. VPP's host stack also provides a transport pluggable session layer
 that abstracts the interaction between applications and transports using a custom-built
-shared memory infrastructure.
+shared memory infrastructure. There is also VPP Comms Library (VCL) provided to ease
+the consumability of the stack from application perspective. VCL manages the interaction
+with the session layer, abstracts session to integer session handles and exposes its
+own async communication functions.
 
 This guide demonstrates two kinds of iperf3 connection:
 
@@ -70,7 +73,7 @@ host stack on DUT and communicate with each other through VPP loopback interface
 Automated Execution
 ===================
 
-Quickly set up VPP & iperf3 and test tcp termination use case:
+Quickly set up VPP & iperf3 and test TCP termination use case:
 
 .. code-block:: shell
 
@@ -105,7 +108,7 @@ If the case runs successfully, the measurement results will be printed:
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
 .. note::
-        VPP's host stack doesn't support tcp socket option ``TCP_INFO`` to get tcp
+        VPP's host stack doesn't support TCP socket option ``TCP_INFO`` to get TCP
         connection information, so ``Retr`` and ``Cwnd`` columns in above output are meaningless.
 
 Stop VPP and iperf3:
@@ -117,7 +120,7 @@ Stop VPP and iperf3:
 Manual Execution
 ================
 
-Users can also set up VPP & iperf3 and test tcp termination case step by step.
+Users can also set up VPP & iperf3 and test TCP termination case step by step.
 
 VPP Setup
 ~~~~~~~~~
@@ -163,9 +166,16 @@ For more detailed usage on above commands, refer to the following links,
 - `VPP app ns reference`_
 - `VPP ip route reference`_
 
-Create two vcl configuration files for iperf3 instances.
+Declare a variable to hold the VPP library for ``LD_PRELOAD``:
 
-- For server instance ``vcl_iperf3_server_lb.conf``:
+.. code-block:: shell
+
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
+
+iperf3 Server Setup
+~~~~~~~~~~~~~~~~~~~
+
+Create a VCL configuration file for iperf3 server ``vcl_iperf3_server_lb.conf``:
 
 .. code-block:: none
 
@@ -178,32 +188,11 @@ Create two vcl configuration files for iperf3 instances.
           app-socket-api /var/run/vpp/app_ns_sockets/server
         }
 
-- For client instance ``vcl_iperf3_client.conf``:
-
-.. code-block:: none
-
-        vcl {
-          rx-fifo-size 4000000
-          tx-fifo-size 4000000
-          namespace-id client
-          namespace-secret 5678
-          app-scope-global
-          app-socket-api /var/run/vpp/app_ns_sockets/client
-        }
-
-The above configure vcl to request 4MB receive and transmit fifo sizes and
-access to global session scope. Additionally, they provide the path to session
-layer's different app namespace socket for iperf3 client and server instances.
-For more vcl parameters usage, refer to `VPP vcl reference`_.
-
-Test
-~~~~
-
-Declare a variable to hold the VPP library for ``LD_PRELOAD``:
-
-.. code-block:: shell
-
-        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
+VCL tries to initialize by reading the configuration in above file pointed to by the
+``VCL_CONFIG`` environment variable. The above configures VCL to request 4MB receive
+and transmit fifo sizes and access to global session scope. Additionally, it provides
+the path to session layer's app namespace socket for iperf3 server. For more VCL parameters
+usage, refer to `VPP VCL reference`_.
 
 Start the iperf3 server on core 2 as a daemon over VPP's host stack:
 
@@ -219,6 +208,22 @@ Here is a sample output for iperf3 server session:
         Connection                                                  State          Rx-f      Tx-f
         [0:0][T] 172.16.1.1:5201->0.0.0.0:0                         LISTEN         0         0
         Thread 0: active sessions 1
+
+Test
+~~~~
+
+Create a VCL configuration file for iperf3 client ``vcl_iperf3_client.conf``:
+
+.. code-block:: none
+
+        vcl {
+          rx-fifo-size 4000000
+          tx-fifo-size 4000000
+          namespace-id client
+          namespace-secret 5678
+          app-scope-global
+          app-socket-api /var/run/vpp/app_ns_sockets/client
+        }
 
 Start the iperf3 client on core 3 over VPP's host stack to connect to iperf3 server:
 
@@ -250,7 +255,7 @@ printed by iperf3 client:
         [ 33]   0.00-10.00  sec  22.3 GBytes  19.2 Gbits/sec                  receiver
 
 .. note::
-        VPP's host stack doesn't support tcp socket option ``TCP_INFO`` to get tcp
+        VPP's host stack doesn't support TCP socket option ``TCP_INFO`` to get TCP
         connection information, so ``Retr`` and ``Cwnd`` columns in above output are meaningless.
 
 For more detailed iperf3 usage, refer to `iperf3 usage reference`_
@@ -274,7 +279,7 @@ Kill iperf3 server:
 Ethernet Connection
 *******************
 
-In this tcp termination scenario, iperf3 server and client run on separated hardware
+In this TCP termination scenario, iperf3 server and client run on separated hardware
 platforms and are connected with ethernet adaptors and cables. iperf3 server runs over
 VPP's host stack on DUT, and iperf3 client runs over Linux kernel stack on client node.
 
@@ -359,10 +364,10 @@ Stop VPP and iperf3:
 Manual Execution
 ================
 
-Users can also set up VPP & iperf3 and test tcp termination case step by step.
+Users can also set up VPP & iperf3 and test TCP termination case step by step.
 
-VPP Setup
-~~~~~~~~~
+DUT VPP Setup
+~~~~~~~~~~~~~
 
 Declare a variable to hold the cli socket for VPP:
 
@@ -387,7 +392,16 @@ Bring VPP ethernet interface up and set ip address:
         sudo ./vppctl -s ${sockfile} set interface state eth0 up
         sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.3.1/24
 
-Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_pn.conf``:
+Declare a variable to hold the VPP library for ``LD_PRELOAD``:
+
+.. code-block:: shell
+
+        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
+
+DUT iperf3 Server Setup
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a VCL configuration file for iperf3 server ``vcl_iperf3_server_pn.conf``:
 
 .. code-block:: none
 
@@ -398,14 +412,10 @@ Create a VCL configuration file for iperf3 server instance ``vcl_iperf3_server_p
           app-socket-api /var/run/vpp/app_ns_sockets/default
         }
 
-The above configures vcl to request 4MB receive and transmit fifo sizes and access
-to global session scope. For more vcl parameters usage, refer to `VPP vcl reference`_.
-
-Declare a variable to hold the VPP library for ``LD_PRELOAD``:
-
-.. code-block:: shell
-
-        export LDP_PATH="<nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/lib/aarch64-linux-gnu/libvcl_ldpreload.so"
+VCL tries to initialize by reading the configuration in above file pointed to by the
+``VCL_CONFIG`` environment variable. The above configures VCL to request 4MB receive
+and transmit fifo sizes and access to global session scope. For more VCL parameters
+usage, refer to `VPP VCL reference`_.
 
 Start the iperf3 server on core 2 as a daemon over VPP's host stack:
 
@@ -472,7 +482,7 @@ Kill iperf3 server:
 Suggested Experiments
 *********************
 
-For jumbo packets, increase VPP tcp mtu and buffer size to improve the performance.
+For jumbo packets, increase VPP TCP mtu and buffer size to improve the performance.
 Below is VPP example config:
 
 .. code-block:: none
@@ -495,6 +505,6 @@ Resources
 #. `VPP ip route reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_ip.html#ip-route>`_
 #. `VPP app ns reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_session.html#app-ns>`_
 #. `VPP cli reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/index.html>`_
-#. `VPP vcl reference <https://wiki.fd.io/view/VPP/HostStack/VCL>`_
+#. `VPP VCL reference <https://wiki.fd.io/view/VPP/HostStack/VCL>`_
 #. `iperf3 <https://github.com/esnet/iperf>`_
 #. `iperf3 usage reference <https://software.es.net/iperf/invoking.html>`_

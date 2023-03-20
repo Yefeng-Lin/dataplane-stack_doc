@@ -13,6 +13,7 @@ export DATAPLANE_TOP
 export LOOP_BACK
 export PHY_IFACE
 export MAINCORE
+export LDP_PATH
 
 help_func()
 {
@@ -33,7 +34,7 @@ DATAPLANE_TOP=${DIR}/../..
 . "${DATAPLANE_TOP}"/tools/check-path.sh
 wrk_binary=${DATAPLANE_TOP}/components/wrk2-aarch64/wrk
 
-options=(-o "hlp:c:")
+options=(-o "hlpc:")
 opts=$(getopt "${options[@]}" -- "$@")
 eval set -- "$opts"
 
@@ -44,11 +45,11 @@ while true; do
           exit 0
           ;;
       -l)
-          export LOOP_BACK="1"
+          LOOP_BACK="1"
           shift 1
           ;;
       -p)
-          export PHY_IFACE="1"
+          PHY_IFACE="1"
           shift 1
           ;;
       -c)
@@ -57,7 +58,7 @@ while true; do
               help_func
               exit 1
           fi
-          export MAINCORE="$2"
+          MAINCORE="$2"
           shift 2
           ;;
       --)

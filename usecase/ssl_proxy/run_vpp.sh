@@ -6,6 +6,15 @@
 
 set -e
 
+export DIR
+export DATAPLANE_TOP
+export vpp_binary
+export vppctl_binary
+export MAINCORE
+export LOOP_BACK
+export PHY_IFACE
+export PCIe_addr
+
 help_func()
 {
     echo
@@ -76,7 +85,7 @@ while true; do
 	  exit 0
 	  ;;
       -l)
-          export LOOP_BACK="1"
+          LOOP_BACK="1"
 	  shift 1
 	  ;;
       -p)
@@ -85,8 +94,7 @@ while true; do
               help_func
 	      exit 1
           fi
-          export PHY_IFACE="1"
-	  export PCIe_addr
+          PHY_IFACE="1"
           PCIe_addr[0]=$(echo "$2" | cut -d "," -f 1)
           PCIe_addr[1]=$(echo "$2" | cut -d "," -f 2)
           if [[ ${PCIe_addr[0]} == "$2" ]]; then
@@ -101,7 +109,7 @@ while true; do
 	      help_func
 	      exit 1
 	  fi
-	  export MAINCORE="$2"
+	  MAINCORE="$2"
 	  shift 2
 	  ;;
       --)

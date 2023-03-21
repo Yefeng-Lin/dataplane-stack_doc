@@ -62,7 +62,7 @@ host stack on the DUT and communicate with each other through VPP loopback inter
 
 .. figure:: ../images/tcp_term_loop.png
    :align: center
-   :width: 200
+   :width: 250
 
    Loopback connection
 

@@ -58,7 +58,7 @@ Loopback Connection
 
 The loopback interface is a software virtual interface that is always up and available
 after it has been configured. In this setup, both iperf3 server and client run over VPP's
-host stack on DUT and communicate with each other through VPP loopback interfaces.
+host stack on the DUT and communicate with each other through VPP loopback interfaces.
 
 .. figure:: ../images/tcp_term_loop.png
    :align: center
@@ -83,7 +83,7 @@ Quickly set up VPP & iperf3 and test TCP termination use case:
         ./usecase/tcp_term/run_iperf3_client.sh -c 3
 
 .. note::
-        Run ``./usecase/tcp_term/run_vpp_hs.sh --help`` for all supported options.
+        Use ``-h`` to check scripts supported options.
 
 If the case runs successfully, the measurement results will be printed:
 
@@ -138,11 +138,11 @@ Run VPP as a daemon on core 1 with session layer enabled:
         cd <nw_ds_workspace>/dataplane-stack/components/vpp/build-root/install-vpp-native/vpp/bin
         sudo ./vpp unix {cli-listen ${sockfile}} cpu {main-core 1} tcp {cc-algo cubic} session {enable use-app-socket-api}
 
-For more VPP configuration parameters, refer to `VPP configuration reference`_:
+For more VPP configuration parameters, refer to `VPP configuration reference`_.
 
 Create loopback interfaces and routes by following VPP commands:
 
-.. code-block:: shell
+.. code-block:: none
 
         sudo ./vppctl -s ${sockfile} create loopback interface
         sudo ./vppctl -s ${sockfile} set interface state loop0 up
@@ -166,7 +166,7 @@ For more detailed usage on above commands, refer to the following links,
 - `VPP app ns reference`_
 - `VPP ip route reference`_
 
-Declare a variable to hold the VPP library for ``LD_PRELOAD``:
+Declare a variable to hold the ``LD_PRELOAD`` library for VCL:
 
 .. code-block:: shell
 
@@ -175,7 +175,9 @@ Declare a variable to hold the VPP library for ``LD_PRELOAD``:
 iperf3 Server Setup
 ~~~~~~~~~~~~~~~~~~~
 
-Create a VCL configuration file for iperf3 server ``vcl_iperf3_server_lb.conf``:
+VCL parameters can be configured through VCL configuration file. A VCL configuation
+sample for iperf3 server is provided at ``<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_server_lb.conf``
+with the following contents:
 
 .. code-block:: none
 
@@ -188,17 +190,17 @@ Create a VCL configuration file for iperf3 server ``vcl_iperf3_server_lb.conf``:
           app-socket-api /var/run/vpp/app_ns_sockets/server
         }
 
-VCL tries to initialize by reading the configuration in above file pointed to by the
-``VCL_CONFIG`` environment variable. The above configures VCL to request 4MB receive
-and transmit fifo sizes and access to global session scope. Additionally, it provides
-the path to session layer's app namespace socket for iperf3 server. For more VCL parameters
-usage, refer to `VPP VCL reference`_.
+The above configures VCL to request 4MB receive and transmit fifo sizes and access
+to global session scope. Additionally, it provides the path to session layer's app
+namespace socket for iperf3 server. For more VCL parameters usage, refer to `VPP VCL reference`_.
 
-Start the iperf3 server on core 2 as a daemon over VPP's host stack:
+``VCL_CONFIG`` provides VCL with a configuration file to read during startup. Start
+the iperf3 server on core 2 as a daemon over VPP's host stack, providing the VCL
+configuration file mentioned above:
 
 .. code-block:: shell
 
-        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server_lb.conf iperf3 -4 -s -D"
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_server_lb.confiperf3 -4 -s -D"
 
 To examine the iperf3 server session in VPP, use the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
 Here is a sample output for iperf3 server session:
@@ -212,7 +214,8 @@ Here is a sample output for iperf3 server session:
 Test
 ~~~~
 
-Create a VCL configuration file for iperf3 client ``vcl_iperf3_client.conf``:
+A VCL configuation sample for iperf3 client is provided at ``<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_client.conf``
+with the following contents:
 
 .. code-block:: none
 
@@ -225,11 +228,12 @@ Create a VCL configuration file for iperf3 client ``vcl_iperf3_client.conf``:
           app-socket-api /var/run/vpp/app_ns_sockets/client
         }
 
-Start the iperf3 client on core 3 over VPP's host stack to connect to iperf3 server:
+Start the iperf3 client on core 3 over VPP's host stack to connect to iperf3 server,
+providing the VCL configuration file mentioned above:
 
 .. code-block:: shell
 
-        sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
+        sudo taskset -c 3 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_client.conf iperf3 -c 172.16.1.1"
 
 If both iperf3 client and server run successfully, measurement results will be
 printed by iperf3 client:
@@ -311,7 +315,7 @@ The output will look similar to:
 
 In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is used to
 connect with client node. The IP address of this NIC interface in VPP is configured
-as 172.16.3.1/24. The IP address of client node is 172.16.3.2/24.
+as 172.16.3.1/24. The IP address of the client node is 172.16.3.2/24.
 
 Automated Execution
 ===================
@@ -332,6 +336,9 @@ On client node start the iperf3 client to connect to iperf3 server on DUT:
 .. code-block:: shell
 
         sudo taskset -c 1 iperf3 -c 172.16.3.1
+
+.. note::
+        Core 1 is assumed to be isolated on client node.
 
 If both iperf3 client and server run successfully, the measurement results will be printed by iperf3 client:
 
@@ -375,7 +382,7 @@ Declare a variable to hold the cli socket for VPP:
 
         export sockfile="/run/vpp/cli.sock"
 
-Run VPP as a daemon on core 1 with interface PCIe address and session layer enabled:
+Run VPP as a daemon on core 1 with PCIe address and session layer enabled:
 
 .. code-block:: shell
 
@@ -385,14 +392,14 @@ Run VPP as a daemon on core 1 with interface PCIe address and session layer enab
 .. note::
         Replace sample address in above command with desired PCIe address on DUT.
 
-Bring VPP ethernet interface up and set ip address:
+Bring VPP ethernet interface up and set IP address:
 
 .. code-block:: shell
 
         sudo ./vppctl -s ${sockfile} set interface state eth0 up
         sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.3.1/24
 
-Declare a variable to hold the VPP library for ``LD_PRELOAD``:
+Declare a variable to hold the ``LD_PRELOAD`` library for VCL:
 
 .. code-block:: shell
 
@@ -401,7 +408,9 @@ Declare a variable to hold the VPP library for ``LD_PRELOAD``:
 DUT iperf3 Server Setup
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Create a VCL configuration file for iperf3 server ``vcl_iperf3_server_pn.conf``:
+VCL parameters can be configured through VCL configuration file. A VCL configuation
+sample for iperf3 server is provided at ``<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_server_pn.conf``
+with the following contents:
 
 .. code-block:: none
 
@@ -412,16 +421,16 @@ Create a VCL configuration file for iperf3 server ``vcl_iperf3_server_pn.conf``:
           app-socket-api /var/run/vpp/app_ns_sockets/default
         }
 
-VCL tries to initialize by reading the configuration in above file pointed to by the
-``VCL_CONFIG`` environment variable. The above configures VCL to request 4MB receive
-and transmit fifo sizes and access to global session scope. For more VCL parameters
-usage, refer to `VPP VCL reference`_.
+The above configures VCL to request 4MB receive and transmit fifo sizes and access
+to global session scope. For more VCL parameters usage, refer to `VPP VCL reference`_.
 
-Start the iperf3 server on core 2 as a daemon over VPP's host stack:
+``VCL_CONFIG`` provides VCL with a configuration file to read during startup. Start
+the iperf3 server on core 2 as a daemon over VPP's host stack, providing the VCL
+configuration file mentioned above:
 
 .. code-block:: shell
 
-        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=/path/to/vcl_iperf3_server_pn.conf iperf3 -4 -s -D"
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_server_pn.conf iperf3 -4 -s -D"
 
 To examine the iperf3 server session in VPP, use the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
 Here is a sample output for iperf3 server session:
@@ -439,6 +448,9 @@ On client node run the iperf3 client to connect to the iperf3 server on DUT:
 .. code-block:: shell
 
         sudo taskset -c 1 iperf3 -c 172.16.3.1
+
+.. note::
+        Core 1 is assumed to be isolated on client node.
 
 If both iperf3 client and server run successfully, measurement results will be
 printed by iperf3 client:
@@ -482,7 +494,7 @@ Kill iperf3 server:
 Suggested Experiments
 *********************
 
-For jumbo packets, increase VPP TCP mtu and buffer size to improve the performance.
+For jumbo packets, increase VPP TCP MTU and buffer size to improve the performance.
 Below is VPP example config:
 
 .. code-block:: none

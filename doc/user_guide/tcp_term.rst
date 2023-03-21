@@ -394,7 +394,7 @@ Run VPP as a daemon on core 1 with PCIe address and session layer enabled:
 
 Bring VPP ethernet interface up and set IP address:
 
-.. code-block:: shell
+.. code-block:: none
 
         sudo ./vppctl -s ${sockfile} set interface state eth0 up
         sudo ./vppctl -s ${sockfile} set interface ip address eth0 172.16.3.1/24

@@ -80,19 +80,19 @@ eval set -- "$opts"
 
 while true; do
     case "$1" in
-      --help | -h)
+      -h)
           help_func
-	  exit 0
-	  ;;
+          exit 0
+          ;;
       -l)
           LOOP_BACK="1"
-	  shift 1
-	  ;;
+          shift 1
+          ;;
       -p)
           if [ "$#" -lt "2" ]; then
               echo "error: \"-p\" requires two physical NIC PCIe addresses"
               help_func
-	      exit 1
+              exit 1
           fi
           PHY_IFACE="1"
           PCIe_addr[0]=$(echo "$2" | cut -d "," -f 1)
@@ -106,20 +106,20 @@ while true; do
       -c)
           if [ "$#" -lt "2" ]; then
               echo "error: \"-c\" requires a cpu isolation core id:"
-	      help_func
-	      exit 1
+              help_func
+              exit 1
 	  fi
-	  MAINCORE="$2"
-	  shift 2
-	  ;;
+          MAINCORE="$2"
+          shift 2
+          ;;
       --)
           shift
-	  break
-	  ;;
+          break
+          ;;
       *)
-	  echo "Invalid Option!!"
-	  exit 1
-	  ;;
+          echo "Invalid Option!!"
+          exit 1
+          ;;
     esac
 done
 

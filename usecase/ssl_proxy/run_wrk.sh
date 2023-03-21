@@ -40,7 +40,7 @@ eval set -- "$opts"
 
 while true; do
     case "$1" in
-      --help | -h)
+      -h)
           help_func
           exit 0
           ;;

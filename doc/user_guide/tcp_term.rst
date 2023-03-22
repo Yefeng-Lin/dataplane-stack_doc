@@ -42,7 +42,7 @@ that supports vectorized packet processing and follows VPP’s highly scalable t
 model. The implementation is RFC compliant and supports many high-speed TCP
 protocol features. VPP's host stack also provides a transport pluggable session layer
 that abstracts the interaction between applications and transports using a custom-built
-shared memory infrastructure. There is also VPP Comms Library (VCL) provided to ease
+shared memory infrastructure. There is also VPP Comms Library (VCL) included to ease
 the consumability of the stack from application perspective. VCL manages the interaction
 with the session layer, abstracts session to integer session handles and exposes its
 own async communication functions.
@@ -62,7 +62,7 @@ host stack on the DUT and communicate with each other through VPP loopback inter
 
 .. figure:: ../images/tcp_term_loop.png
    :align: center
-   :width: 250
+   :width: 300
 
    Loopback connection
 
@@ -315,7 +315,11 @@ The output will look similar to:
 
 In this setup example, ``enP1p1s0f0`` at PCIe address ``0001:01:00.0`` is used to
 connect with client node. The IP address of this NIC interface in VPP is configured
-as 172.16.3.1/24. The IP address of the client node is 172.16.3.2/24.
+as 172.16.3.1/24. The IP address of the client node NIC is 172.16.3.2/24.
+
+Install iperf3 on the client node. If running Ubuntu 20.04 or later, ``apt install iperf3``
+will be sufficient. For other Linux distributions, please consult the package manager
+or consider building iperf3 from source.
 
 Automated Execution
 ===================

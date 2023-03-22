@@ -35,7 +35,7 @@ help_func()
 
 loop_back()
 {
-    sudo "${vppctl_binary}" -s "${sockfile}" create loopback interface 
+    sudo "${vppctl_binary}" -s "${sockfile}" create loopback interface
     sudo "${vppctl_binary}" -s "${sockfile}" set interface state loop0 up
     sudo "${vppctl_binary}" -s "${sockfile}" create loopback interface
     sudo "${vppctl_binary}" -s "${sockfile}" set interface state loop1 up
@@ -45,7 +45,7 @@ loop_back()
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip table loop0 1
     sudo "${vppctl_binary}" -s "${sockfile}" ip table add 2
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip table loop1 2
-    sudo "${vppctl_binary}" -s "${sockfile}" ip table add 3 
+    sudo "${vppctl_binary}" -s "${sockfile}" ip table add 3
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip table loop2 3
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip address loop0 172.16.1.1/24
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip address loop1 172.16.2.1/24
@@ -101,14 +101,14 @@ while true; do
               echo "error: \"-p\" option bad usage"
               exit 1
           fi
-	  shift 2
-	  ;;
+          shift 2
+          ;;
       -c)
           if [ "$#" -lt "2" ]; then
               echo "error: \"-c\" requires a cpu isolation core id:"
               help_func
               exit 1
-	  fi
+          fi
           MAINCORE="$2"
           shift 2
           ;;
@@ -151,7 +151,7 @@ check_vpp
 check_vppctl
 
 sockfile="/run/vpp/cli.sock"
- 
+
 if [ -n "$LOOP_BACK" ]; then
     sudo "${vpp_binary}" unix "{ cli-listen ${sockfile} }"                                                \
                          cpu "{ main-core ${MAINCORE} }"                                                  \

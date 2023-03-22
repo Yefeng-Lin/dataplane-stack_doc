@@ -92,7 +92,7 @@ check_ldp
 sudo mkdir -p /etc/nginx/certs
 
 if ! [[ -e /etc/nginx/certs/proxy.key && -e /etc/nginx/certs/proxy.crt ]]; then
-        echo "Creating ssl proxy's private keys and cerfificatesi..."
+        echo "Creating ssl proxy's private keys and certificates..."
         sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/proxy.key -out /etc/nginx/certs/proxy.crt
 fi
 echo "Created successfully!"

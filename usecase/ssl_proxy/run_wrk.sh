@@ -27,7 +27,7 @@ help_func()
     echo "  ./run_wrk.sh -p -c 4"
     echo
 }
- 
+
 DIR=$(cd "$(dirname "$0")" || exit 1 ;pwd)
 DATAPLANE_TOP=${DIR}/../..
 # shellcheck source=../../tools/check-path.sh
@@ -62,7 +62,7 @@ while true; do
           shift 2
           ;;
       --)
-	  shift
+          shift
           break
           ;;
       *)
@@ -71,19 +71,19 @@ while true; do
           ;;
     esac
 done
- 
+
 if [[ ${LOOP_BACK} && ${PHY_IFACE} ]]; then
       echo "Don't support both -l and -p at the same time!!"
       help_func
       exit 1
 fi
- 
+
 if ! [[ ${LOOP_BACK} || ${PHY_IFACE} ]]; then
       echo "Need a option: \"-l\" or \"-p\""
       help_func
       exit 1
 fi
- 
+
 if ! [[ ${MAINCORE} ]]; then
       echo "error: \"-c\" option bad usage"
       help_func

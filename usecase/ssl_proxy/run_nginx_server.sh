@@ -92,7 +92,7 @@ check_ldp
 sudo mkdir -p /etc/nginx/certs
 
 if ! [[ -e /etc/nginx/certs/server.key && -e /etc/nginx/certs/server.crt ]]; then
-      echo "Creating ssl server's private keys and cerfificatesi..."
+      echo "Creating ssl server's private keys and certificates..."
       sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
 fi
 echo "Created successfully!"

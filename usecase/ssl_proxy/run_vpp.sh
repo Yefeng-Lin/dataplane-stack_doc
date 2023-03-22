@@ -50,9 +50,9 @@ loop_back()
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip address loop0 172.16.1.1/24
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip address loop1 172.16.2.1/24
     sudo "${vppctl_binary}" -s "${sockfile}" set interface ip address loop2 172.16.3.1/24
-    sudo "${vppctl_binary}" -s "${sockfile}" app ns add id server secret 1234 sw_if_index 1
-    sudo "${vppctl_binary}" -s "${sockfile}" app ns add id proxy secret 1234 sw_if_index 2
-    sudo "${vppctl_binary}" -s "${sockfile}" app ns add id client secret 1234 sw_if_index 3
+    sudo "${vppctl_binary}" -s "${sockfile}" app ns add id server secret 1234 if loop0
+    sudo "${vppctl_binary}" -s "${sockfile}" app ns add id proxy secret 1234 if loop1
+    sudo "${vppctl_binary}" -s "${sockfile}" app ns add id client secret 1234 if loop2
     sudo "${vppctl_binary}" -s "${sockfile}" ip route add 172.16.1.1/32 table 2 via lookup in table 1
     sudo "${vppctl_binary}" -s "${sockfile}" ip route add 172.16.3.1/32 table 2 via lookup in table 3
     sudo "${vppctl_binary}" -s "${sockfile}" ip route add 172.16.2.1/32 table 1 via lookup in table 2

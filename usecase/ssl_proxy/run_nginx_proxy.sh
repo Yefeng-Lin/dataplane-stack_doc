@@ -10,7 +10,7 @@ export DIR
 export DATAPLANE_TOP
 export LOOP_BACK
 export PHY_IFACE
-export MAINCORE
+export MAIN_CORE
 export LDP_PATH
 
 help_func()
@@ -55,7 +55,7 @@ while true; do
               help_func
               exit 1
           fi
-          MAINCORE="$2"
+          MAIN_CORE="$2"
           shift 2
           ;;
       --)
@@ -81,7 +81,7 @@ if ! [[ ${LOOP_BACK} || ${PHY_IFACE} ]]; then
       exit 1
 fi
 
-if ! [[ ${MAINCORE} ]]; then
+if ! [[ ${MAIN_CORE} ]]; then
       echo "error: \"-c\" option bad usage"
       help_func
       exit 1
@@ -107,5 +107,5 @@ NGINX_PROXY_CONF=nginx_proxy.conf
 
 echo "=========="
 echo "Starting Proxy"
-sudo taskset -c "${MAINCORE}" sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_PROXY_CONF} nginx -c ${DIR}/${NGINX_PROXY_CONF}"
+sudo taskset -c "${MAIN_CORE}" sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_PROXY_CONF} nginx -c ${DIR}/${NGINX_PROXY_CONF}"
 echo "Done!!"

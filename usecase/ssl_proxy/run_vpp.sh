@@ -10,7 +10,7 @@ export DIR
 export DATAPLANE_TOP
 export vpp_binary
 export vppctl_binary
-export MAINCORE
+export MAIN_CORE
 export LOOP_BACK
 export PHY_IFACE
 export PCIe_addr
@@ -109,7 +109,7 @@ while true; do
               help_func
               exit 1
           fi
-          MAINCORE="$2"
+          MAIN_CORE="$2"
           shift 2
           ;;
       --)
@@ -136,12 +136,12 @@ if ! [[ ${LOOP_BACK} || ${PHY_IFACE} ]]; then
 fi
 
 if [[ ${PHY_IFACE[*]} && ! ${PCIe_addr[*]} ]]; then
-    echo "error: \"-p\" need two physical NIC PCIe addresses:"
+    echo "error: \"-p\" need two physical NIC PCIe addresses"
     help_func
     exit 1
 fi
 
-if ! [[ ${MAINCORE} ]]; then
+if ! [[ ${MAIN_CORE} ]]; then
     echo "error: \"-c\" option bad usage"
     help_func
     exit 1
@@ -154,7 +154,7 @@ sockfile="/run/vpp/cli.sock"
 
 if [ -n "$LOOP_BACK" ]; then
     sudo "${vpp_binary}" unix "{ cli-listen ${sockfile} }"                                                \
-                         cpu "{ main-core ${MAINCORE} }"                                                  \
+                         cpu "{ main-core ${MAIN_CORE} }"                                                  \
                          tcp "{ cc-algo cubic }"                                                          \
                          session "{ enable use-app-socket-api }"                                          \
 
@@ -170,7 +170,7 @@ fi
 
 if [ -n "$PHY_IFACE" ]; then
     sudo "${vpp_binary}" unix "{ cli-listen ${sockfile} }"                                                \
-                         cpu "{ main-core ${MAINCORE} }"                                                  \
+                         cpu "{ main-core ${MAIN_CORE} }"                                                  \
                          tcp "{cc-algo cubic}"                                                            \
                          session "{enable use-app-socket-api}"                                            \
                          dpdk "{ dev ${PCIe_addr[0]} { name eth0 } dev ${PCIe_addr[1]} { name eth1 } }"   \

@@ -515,6 +515,7 @@ Below is VPP example config:
 Resources
 *********
 
+#. `iperf3 <https://github.com/esnet/iperf>`_
 #. `VPP configuration reference <https://s3-docs.fd.io/vpp/23.02/configuration/reference.html>`_
 #. `VPP set interface ip address reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_ip.html#set-interface-ip-address>`_
 #. `VPP set interface state reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet.html#set-interface-state>`_
@@ -522,5 +523,4 @@ Resources
 #. `VPP app ns reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/clis/clicmd_src_vnet_session.html#app-ns>`_
 #. `VPP cli reference <https://s3-docs.fd.io/vpp/23.02/cli-reference/index.html>`_
 #. `VPP VCL reference <https://wiki.fd.io/view/VPP/HostStack/VCL>`_
-#. `iperf3 <https://github.com/esnet/iperf>`_
 #. `iperf3 usage reference <https://software.es.net/iperf/invoking.html>`_

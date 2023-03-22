@@ -105,7 +105,7 @@ while true; do
           ;;
       -c)
           if [ "$#" -lt "2" ]; then
-              echo "error: \"-c\" requires a cpu isolation core id:"
+              echo "error: \"-c\" requires a cpu isolation core id"
               help_func
               exit 1
           fi

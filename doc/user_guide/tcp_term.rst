@@ -200,7 +200,7 @@ configuration file mentioned above:
 
 .. code-block:: shell
 
-        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_server_lb.confiperf3 -4 -s -D"
+        sudo taskset -c 2 sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=<nw_ds_workspace>/usecase/tcp_term/vcl_iperf3_server_lb.conf iperf3 -4 -s -D"
 
 To examine the iperf3 server session in VPP, use the command ``sudo ./vppctl -s ${sockfile} show session verbose``.
 Here is a sample output for iperf3 server session:

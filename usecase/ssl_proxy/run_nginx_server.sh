@@ -22,7 +22,7 @@ help_func()
     echo "            := -h help"
     echo "Example:"
     echo "  ./run_nginx_server.sh -l -c 2"
-    echo "  ./run_nginx_server.sh -p -c 2"
+    echo "  ./run_nginx_server.sh -p -c 1"
     echo
 }
 

@@ -19,8 +19,8 @@ help_func()
 {
     echo
     echo "Usage: ./run_vpp.sh OPTS [ARGS]"
-    echo "where  OPTS := -l ssl proxy test via loopback interface"
-    echo "            := -p ssl proxy test via physical NIC"
+    echo "where  OPTS := -l ssl reverse proxy test via loopback interface"
+    echo "            := -p ssl reverse proxy test via physical NIC"
     echo "            := -c cpu core assignments"
     echo "            := -h help"
     echo "       ARGS := \"-p\" needs two physical NIC PCIe addresses, one NIC connected to wrk2 client"

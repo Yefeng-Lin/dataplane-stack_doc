@@ -16,8 +16,8 @@ export LDP_PATH
 help_func()
 {
     echo "Usage: ./run_nginx_proxy.sh OPTS [ARGS]"
-    echo "where  OPTS := -l ssl proxy test via loopback interface"
-    echo "            := -p ssl proxy test via physical NIC"
+    echo "where  OPTS := -l ssl reverse proxy test via loopback interface"
+    echo "            := -p ssl reverse proxy test via physical NIC"
     echo "            := -c set cpu affinity of nginx proxy server, example: -c 3"
     echo "            := -h help"
     echo "Example:"

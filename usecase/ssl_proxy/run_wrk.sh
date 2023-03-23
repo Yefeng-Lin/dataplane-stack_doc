@@ -97,7 +97,7 @@ if ! [[ $(command -v "${wrk_binary}") ]]; then
       cd "${DIR}"/../../components
       git clone https://github.com/AmpereTravis/wrk2-aarch64.git
       cd wrk2-aarch64
-      git am "${DIR}"/../../patches/wrk2/0001-wrk2-fd-vpp.patch
+      git am "${DIR}"/../../patches/wrk2/0001_wrk2_fd_vpp.patch
       make all > /dev/null 2>&1
 fi
 

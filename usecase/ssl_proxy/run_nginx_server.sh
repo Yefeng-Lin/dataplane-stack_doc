@@ -92,19 +92,19 @@ check_ldp
 sudo mkdir -p /etc/nginx/certs
 
 if ! [[ -e /etc/nginx/certs/server.key && -e /etc/nginx/certs/server.crt ]]; then
-      echo "Creating ssl server's private keys and certificates..."
+      echo "Creating ssl server's private key and certificate..."
       sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
 fi
 echo "Created successfully!"
-echo "ls /etc/nginx/certs/server.key"
-echo "ls /etc/nginx/certs/server.crt"
+echo "/etc/nginx/certs/server.key"
+echo "/etc/nginx/certs/server.crt"
 
 sudo mkdir -p /var/www/html
 
 if ! [ -e /var/www/html/1kb ]; then
       echo "Creating 1kb load file"
       sudo dd if=/dev/urandom of=/var/www/html/1kb bs=1024 count=1
-      echo "ls /var/www/html/1kb"
+      echo "Created /var/www/html/1kb"
 fi
 
 VCL_SERVER_CONF=vcl_nginx_server.conf

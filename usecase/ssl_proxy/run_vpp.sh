@@ -24,7 +24,7 @@ help_func()
     echo "            := -c cpu core assignment"
     echo "            := -h help"
     echo "       ARGS := \"-p\" needs two physical NIC PCIe addresses, one NIC connected to wrk2 client"
-    echo "               and another NIC connected to nginx server, example: -p <client_PCIe_addr,server_PCIe_addr>"
+    echo "               and another NIC connected to NGINX server, example: -p <client_PCIe_addr,server_PCIe_addr>"
     echo "               using \"lshw -c net -businfo\" get physical NIC PCIe address"
     echo "            := \"-c\" assign VPP main thread to a CPU core, example: -c <main-core>"
     echo "Example:"

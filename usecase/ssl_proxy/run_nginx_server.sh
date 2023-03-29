@@ -18,7 +18,7 @@ help_func()
     echo "Usage: ./run_nginx_server.sh OPTS [ARGS]"
     echo "where  OPTS := -l ssl reverse proxy test via loopback interface"
     echo "            := -p ssl reverse proxy test via physical NIC"
-    echo "            := -c set cpu affinity of nginx https server, example: -c 2"
+    echo "            := -c set cpu affinity of NGINX https server, example: -c 2"
     echo "            := -h help"
     echo "Example:"
     echo "  ./run_nginx_server.sh -l -c 2"

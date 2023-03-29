@@ -4,6 +4,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-echo "Stop VPP instance, nginx proxy & server..."
+echo "Stop VPP instance, NGINX proxy & server..."
 sudo pkill -9 vpp
 sudo pkill -9 nginx

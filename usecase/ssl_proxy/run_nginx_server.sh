@@ -94,10 +94,10 @@ sudo mkdir -p /etc/nginx/certs
 if ! [[ -e /etc/nginx/certs/server.key && -e /etc/nginx/certs/server.crt ]]; then
       echo "Creating ssl server's private key and certificate..."
       sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /etc/nginx/certs/server.key -out /etc/nginx/certs/server.crt
+      echo "Created successfully!"
+      echo "/etc/nginx/certs/server.key"
+      echo "/etc/nginx/certs/server.crt"
 fi
-echo "Created successfully!"
-echo "/etc/nginx/certs/server.key"
-echo "/etc/nginx/certs/server.crt"
 
 sudo mkdir -p /var/www/html
 

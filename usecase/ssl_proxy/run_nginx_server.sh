@@ -111,7 +111,7 @@ VCL_SERVER_CONF=vcl_nginx_server.conf
 NGINX_SERVER_CONF=nginx_server.conf
 
 echo "=========="
-echo "Starting Serevr"
+echo "Starting Server"
 if [ -n "$LOOP_BACK" ]; then
     sudo taskset -c "${MAIN_CORE}" sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_SERVER_CONF} nginx -c ${DIR}/${NGINX_SERVER_CONF}"
 fi

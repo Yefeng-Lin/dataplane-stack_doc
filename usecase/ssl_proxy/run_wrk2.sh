@@ -106,11 +106,11 @@ echo ""
 
 VCL_WRK_CONF=vcl_wrk2.conf
 if [ -n "$LOOP_BACK" ]; then
-    sudo taskset -c "${MAIN_CORE}" sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
+    sudo taskset -c "${MAIN_CORE}" sh -c "LD_PRELOAD=${LDP_PATH} VCL_CONFIG=${DIR}/${VCL_WRK_CONF} ${DATAPLANE_TOP}/components/wrk2-aarch64/wrk --rate 100000000 -t 1 -c 12 -d 60s https://172.16.2.1:8089/1kb"
 fi
 
 if [ -n "$PHY_IFACE" ]; then
-    sudo taskset -c "${MAIN_CORE}" sh -c "${wrk_binary} --rate 100000000 -t 1 -c 10 -d 60s https://172.16.2.1:8089/1kb"
+    sudo taskset -c "${MAIN_CORE}" sh -c "${wrk_binary} --rate 100000000 -t 1 -c 12 -d 60s https://172.16.2.1:8089/1kb"
 fi
 
 echo ""
